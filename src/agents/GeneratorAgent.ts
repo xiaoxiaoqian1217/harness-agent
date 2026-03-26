@@ -96,6 +96,8 @@ Only include files that are necessary for the initial project setup.
       // Create a snapshot before starting the sprint
       await this.gitManager.createSnapshot(`sprint-${sprint.sprintNumber}-start`);
 
+      const directoryStructure = await this.getDirectoryStructure();
+
       const prompt = `
 Implement the following sprint tasks for the project:
 
@@ -111,7 +113,7 @@ Deliverables expected:
 ${sprint.deliverables.map(d => `- ${d}`).join('\n')}
 
 Current project directory structure:
-${await this.getDirectoryStructure()}
+${directoryStructure}
 
 Instructions:
 1. Implement all tasks described in the sprint
@@ -178,6 +180,8 @@ Only include files that were modified or added during this sprint.
 
     this.logger.info('Integrating evaluator feedback');
 
+    const directoryStructure = await this.getDirectoryStructure();
+
     const prompt = `
 Improve the project based on the following feedback:
 
@@ -188,7 +192,7 @@ Project Context:
 ${JSON.stringify(context.specification, null, 2)}
 
 Current project directory structure:
-${await this.getDirectoryStructure()}
+${directoryStructure}
 
 Make the necessary changes to address all the feedback points.
 Provide the output as a JSON object where keys are file paths (relative to project root) and values are the new file contents.

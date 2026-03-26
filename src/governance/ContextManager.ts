@@ -1,12 +1,12 @@
 import { ProjectContext } from '../types/project';
 import { CompressedContext, StateTransferDocument } from '../types/governance';
-import { LLMClientFactory } from '../core/llm';
 
 export class ContextManager {
   constructor() {}
 
   /**
    * Compress context to reduce token count while preserving important information
+   * Simple implementation - truncates long texts while preserving structure
    */
   async compressContext(
     context: string,
@@ -25,22 +25,18 @@ export class ContextManager {
       };
     }
 
-    // Use LLM to intelligently compress context
-    const llmClient = await LLMClientFactory.createDefaultClientForAgent('planner');
+    // Simple truncation for now - in production this would use more sophisticated methods
+    const charLimit = targetTokenLimit * 4; // Rough estimate: 4 chars ≈ 1 token
+    let compressedContent = context.substring(0, charLimit);
 
-    const prompt = `
-Compress the following context to approximately ${targetTokenLimit} tokens.
-Preserve all critical information including requirements, decisions, and key technical details.
-Remove redundant information, verbose descriptions, and non-critical details.
+    // Try to end on a clean boundary
+    const lastNewline = compressedContent.lastIndexOf('\n');
+    if (lastNewline > charLimit * 0.8) {
+      compressedContent = compressedContent.substring(0, lastNewline);
+    }
 
-Context to compress:
-${context}
+    compressedContent += '\n\n[...content truncated for brevity...]';
 
-Return ONLY the compressed context text.
-    `.trim();
-
-    const response = await llmClient.generateResponse(prompt);
-    const compressedContent = response.content;
     const compressedSize = this.estimateTokenCount(compressedContent);
 
     return {
@@ -48,8 +44,8 @@ Return ONLY the compressed context text.
       compressedSizeTokens: compressedSize,
       compressionRatio: Math.round((compressedSize / originalSize) * 100) / 100,
       content: compressedContent,
-      preservedElements: ['All critical requirements', 'Key technical decisions', 'Project structure'],
-      discardedElements: ['Verbose descriptions', 'Redundant information', 'Non-critical details'],
+      preservedElements: ['Beginning of context', 'Structure preserved'],
+      discardedElements: ['End of context', 'Verbose details'],
     };
   }
 
