@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { SprintSchema } from './project';
 
 export const SprintContractClauseSchema = z.object({
   id: z.string(),

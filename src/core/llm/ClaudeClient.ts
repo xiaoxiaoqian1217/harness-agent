@@ -22,7 +22,7 @@ export class ClaudeClient extends BaseLLMClient {
   async generateResponse(
     prompt: string,
     systemPrompt?: string,
-    context?: Record<string, any>
+    _context?: Record<string, any>
   ): Promise<AgentResponse> {
     this.ensureInitialized();
 
@@ -58,7 +58,7 @@ export class ClaudeClient extends BaseLLMClient {
     prompt: string,
     tools: any[],
     systemPrompt?: string,
-    context?: Record<string, any>
+    _context?: Record<string, any>
   ): Promise<AgentResponse & { toolCalls?: any[] }> {
     this.ensureInitialized();
 
@@ -72,16 +72,17 @@ export class ClaudeClient extends BaseLLMClient {
       messages,
       max_tokens: this.config!.maxTokens,
       temperature: this.config!.temperature,
+      // @ts-ignore - Tools support is available in newer SDK versions
       tools,
-    });
+    } as any);
 
     const content = response.content
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
+      .filter((block: any) => block.type === 'text')
+      .map((block: any) => block.text)
       .join('\n');
 
     const toolCalls = response.content
-      .filter(block => block.type === 'tool_use');
+      .filter((block: any) => block.type === 'tool_use');
 
     return {
       success: true,

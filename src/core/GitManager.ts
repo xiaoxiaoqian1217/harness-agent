@@ -1,6 +1,5 @@
 import simpleGit, { SimpleGit, SimpleGitOptions, CommitResult, StatusResult, LogResult } from 'simple-git';
 import fs from 'fs-extra';
-import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -111,15 +110,13 @@ export class GitManager {
       email: this.defaultUserEmail,
     };
 
-    const commitOptions = await this.git.commit(
+    return this.git.commit(
       options.message,
       options.files || [],
       {
-        '--author': `"${author.name} <${author.email}>"',
+        '--author': `${author.name} <${author.email}>`,
       }
     );
-
-    return commit;
   }
 
   /**
@@ -196,7 +193,7 @@ export class GitManager {
    */
   async restore(ref: string, hard: boolean = false): Promise<void> {
     if (hard) {
-      await this.git.reset(['--hard', ref);
+      await this.git.reset(['--hard', ref]);
     } else {
       await this.git.checkout(ref);
     }

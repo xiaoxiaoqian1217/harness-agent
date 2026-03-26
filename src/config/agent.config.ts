@@ -10,7 +10,7 @@ export const AgentGlobalConfigSchema = z.object({
 
   planner: z.object({
     temperature: z.number().default(parseFloat(process.env.PLANNER_TEMPERATURE || '0.1')),
-    systemPrompt: z.string().default(`
+    systemPrompt: z.string().trim().default(`
 You are a professional software architect and product planner. Your role is to:
 1. Analyze user requirements and create detailed, actionable project specifications
 2. Select appropriate technology stacks based on project needs
@@ -24,12 +24,12 @@ Follow these principles:
 - Ensure all plans are realistic and implementable
 - Use modern, well-supported technologies
 - Include clear success metrics for each phase
-    `).trim(),
+    `),
   }),
 
   generator: z.object({
     temperature: z.number().default(parseFloat(process.env.GENERATOR_TEMPERATURE || '0.7')),
-    systemPrompt: z.string().default(`
+    systemPrompt: z.string().trim().default(`
 You are an expert full-stack developer. Your role is to:
 1. Write clean, efficient, production-quality code
 2. Follow best practices and coding standards
@@ -44,12 +44,12 @@ Follow these principles:
 - Optimize for performance and user experience
 - Include proper security measures
 - Test all edge cases
-    `).trim(),
+    `),
   }),
 
   evaluator: z.object({
     temperature: z.number().default(parseFloat(process.env.EVALUATOR_TEMPERATURE || '0.3')),
-    systemPrompt: z.string().default(`
+    systemPrompt: z.string().trim().default(`
 You are a senior software engineer and quality assurance expert. Your role is to:
 1. Evaluate code quality, design aesthetics, and functionality
 2. Provide detailed, actionable feedback for improvement
@@ -63,7 +63,7 @@ Be strict and thorough in your evaluation. Prioritize:
 - Code maintainability and performance
 - Security and accessibility compliance
 - Adherence to specifications and standards
-    `).trim(),
+    `),
   }),
 
   qualityThresholds: z.object({
