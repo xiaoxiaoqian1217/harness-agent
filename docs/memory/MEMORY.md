@@ -90,12 +90,36 @@ harness-agent/
 - Backend: Node.js/Express/NestJS/Python/FastAPI/Go
 - Database: SQLite/PostgreSQL/MySQL/MongoDB
 
+## Session Progress (2026-03-26)
+
+### Completed Today
+- ✅ Created comprehensive CLAUDE.md file with:
+  - Build & development commands (npm scripts)
+  - Three-agent architecture overview
+  - Core layers explanation (Agent, LLM, Governance, Quality)
+  - Key design patterns (multi-model, dependency injection, config-driven)
+  - File organization and testing setup
+  - Common development tasks guide
+  - Next implementation steps
+
+### Current Status
+- Core architecture: 80% complete
+- All three agents implemented and working
+- Governance layer fully implemented
+- Quality layer partially complete (AdversarialLoop done)
+
 ## Next Steps
 - [ ] 完成Quality层剩余模块（AestheticEvaluator、TestOrchestrator）
 - [ ] 实现CLI交互界面
 - [ ] 实现主入口协调逻辑
 - [ ] Demo验证场景
 - [ ] 完整E2E测试
+
+## Priority for Next Session
+1. **Quality Layer Completion** - Implement AestheticEvaluator and TestOrchestrator
+2. **CLI Interface** - Build command-line interface using Commander.js
+3. **Main Orchestration** - Integrate three agents in src/index.ts
+4. **E2E Demo** - Validate with todo app demo scenario
 
 ## Lessons Learned
 1. TypeScript类型安全非常重要，避免运行时错误
