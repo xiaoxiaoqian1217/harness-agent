@@ -1,7 +1,11 @@
-import { ProjectContext } from '../types/project';
+import { ProjectContext, ProjectContextSchema } from '../types/project';
 import { CompressedContext, StateTransferDocument } from '../types/governance';
+import path from 'path';
+import fs from 'fs-extra';
 
 export class ContextManager {
+  private stateFileName = '.harness/state.json';
+
   constructor() {}
 
   /**
@@ -110,5 +114,52 @@ export class ContextManager {
   estimateTokenCount(text: string): number {
     // Rough estimation: 1 token ≈ 4 characters for English text
     return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Save project context to disk
+   */
+  async saveState(context: ProjectContext, projectPath: string): Promise<void> {
+    const stateDir = path.join(projectPath, '.harness');
+    await fs.mkdirp(stateDir);
+
+    const statePath = path.join(projectPath, this.stateFileName);
+
+    // Convert Date objects to strings for JSON serialization
+    const contextToSave = {
+      ...context,
+      createdAt: context.createdAt.toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await fs.writeFile(statePath, JSON.stringify(contextToSave, null, 2));
+  }
+
+  /**
+   * Load project context from disk
+   */
+  async loadState(projectPath: string): Promise<ProjectContext | null> {
+    const statePath = path.join(projectPath, this.stateFileName);
+
+    if (!await fs.pathExists(statePath)) {
+      return null;
+    }
+
+    try {
+      const content = await fs.readFile(statePath, 'utf-8');
+      const parsed = JSON.parse(content);
+
+      // Convert strings back to Date objects
+      const context: ProjectContext = {
+        ...parsed,
+        createdAt: new Date(parsed.createdAt),
+        updatedAt: new Date(parsed.updatedAt),
+      };
+
+      return ProjectContextSchema.parse(context);
+    } catch (error) {
+      console.warn('Failed to load state:', error);
+      return null;
+    }
   }
 }

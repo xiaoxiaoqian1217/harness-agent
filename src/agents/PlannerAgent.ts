@@ -209,30 +209,53 @@ Return ONLY a valid JSON object with the following structure:
   /**
    * Main execution method: analyze requirements, select stack, create spec and plan
    */
-  async execute(rawRequirements: string): Promise<{
-    requirements: ProjectRequirements;
-    techStack: TechStack;
-    specification: ProjectSpecification;
-    plan: ProjectPlan;
+  async execute(input: string | {
+    requirement: string;
+    techStack?: any;
+    outputPath?: string;
+  }): Promise<{
+    success: boolean;
+    error?: string;
+    context: any;
   }> {
     this.logger.info('Executing planning workflow');
 
-    const requirements = await this.analyzeRequirements(rawRequirements);
-    const techStack = await this.recommendTechStack(requirements);
-    const specification = await this.createProjectSpecification(requirements, techStack);
-    const plan = await this.createProjectPlan(specification);
+    try {
+      const rawRequirements = typeof input === 'string' ? input : input.requirement;
 
-    this.logger.info('Planning workflow completed', {
-      projectTitle: specification.title,
-      totalSprints: plan.totalSprints,
-      estimatedHours: plan.estimatedTotalHours,
-    });
+      const requirements = await this.analyzeRequirements(rawRequirements);
+      const techStack = await this.recommendTechStack(requirements);
+      const specification = await this.createProjectSpecification(requirements, techStack);
+      const plan = await this.createProjectPlan(specification);
 
-    return {
-      requirements,
-      techStack,
-      specification,
-      plan,
-    };
+      // Create full project context
+      const projectContext = {
+        projectId: `project-${Date.now()}`,
+        projectPath: typeof input === 'object' && input.outputPath ? input.outputPath : './',
+        specification,
+        plan,
+        currentSprint: 0,
+        iterationCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      this.logger.info('Planning workflow completed', {
+        projectTitle: specification.title,
+        totalSprints: plan.totalSprints,
+        estimatedHours: plan.estimatedTotalHours,
+      });
+
+      return {
+        success: true,
+        context: projectContext,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        context: null,
+      };
+    }
   }
 }

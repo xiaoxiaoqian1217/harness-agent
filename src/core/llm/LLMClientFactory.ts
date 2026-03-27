@@ -1,5 +1,6 @@
 import { LLMClient } from './LLMClient';
 import { ClaudeClient } from './ClaudeClient';
+import { QwenClient } from './QwenClient';
 import { AgentConfig, AgentType } from '../../types/agent';
 
 export type LLMProvider = 'claude' | 'openai' | 'doubao' | 'qwen';
@@ -39,15 +40,16 @@ export class LLMClientFactory {
         client = new ClaudeClient();
         break;
 
+      case 'qwen':
+        client = new QwenClient();
+        break;
+
       // Add other providers here when implementing
       // case 'openai':
       //   client = new OpenAIClient();
       //   break;
       // case 'doubao':
       //   client = new DoubaoClient();
-      //   break;
-      // case 'qwen':
-      //   client = new QwenClient();
       //   break;
 
       default:

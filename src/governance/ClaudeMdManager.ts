@@ -4,16 +4,44 @@ import { ProjectSpecification } from '../types/project';
 import { ClaudeMdSpec, ComplianceCheckResult } from '../types/governance';
 
 export class ClaudeMdManager {
-  private projectPath: string;
+  private projectPath: string | undefined;
 
-  constructor(projectPath: string) {
+  constructor(projectPath?: string) {
     this.projectPath = projectPath;
+  }
+
+  /**
+   * Generate CLAUDE.md file for the project (main entry point)
+   */
+  async generateClaudeMd(
+    specification: ProjectSpecification,
+    projectPath?: string
+  ): Promise<string> {
+    if (projectPath) {
+      this.projectPath = projectPath;
+    }
+    const resolvedPath = this.getProjectPath();
+
+    await this.generateRootSpec(specification, resolvedPath);
+    return path.join(resolvedPath, 'CLAUDE.md');
+  }
+
+  /**
+   * Get project path, throw if not set
+   */
+  private getProjectPath(): string {
+    if (!this.projectPath) {
+      throw new Error('Project path not set. Initialize ClaudeMdManager with a project path first.');
+    }
+    return this.projectPath;
   }
 
   /**
    * Generate root CLAUDE.md file for the project
    */
-  async generateRootSpec(specification: ProjectSpecification): Promise<ClaudeMdSpec> {
+  async generateRootSpec(specification: ProjectSpecification, projectPath?: string): Promise<ClaudeMdSpec> {
+    const resolvedPath = projectPath || this.getProjectPath();
+
     const content = `# ${specification.title} - Global Project Specifications
 
 ## Project Overview
@@ -61,7 +89,7 @@ ${JSON.stringify(specification.designGuidelines, null, 2)}
 5. Accessibility compliance
     `.trim();
 
-    const filePath = path.join(this.projectPath, 'CLAUDE.md');
+    const filePath = path.join(resolvedPath, 'CLAUDE.md');
     await fs.writeFile(filePath, content);
 
     return {
@@ -82,7 +110,8 @@ ${JSON.stringify(specification.designGuidelines, null, 2)}
     moduleDescription: string,
     additionalRules: string[] = []
   ): Promise<ClaudeMdSpec> {
-    const fullDirPath = path.join(this.projectPath, directoryPath);
+    const resolvedPath = this.getProjectPath();
+    const fullDirPath = path.join(resolvedPath, directoryPath);
     await fs.mkdirp(fullDirPath);
 
     const content = `# ${moduleName} - Module Specifications
@@ -113,11 +142,13 @@ All global project specifications in the root CLAUDE.md also apply to this modul
    * Check if project complies with all CLAUDE.md specifications
    */
   async checkCompliance(): Promise<ComplianceCheckResult> {
+    const resolvedPath = this.getProjectPath();
+
     // This would scan all code against the rules in CLAUDE.md files
     // For now, we'll return a placeholder implementation
 
     return {
-      specPath: path.join(this.projectPath, 'CLAUDE.md'),
+      specPath: path.join(resolvedPath, 'CLAUDE.md'),
       compliant: true,
       violations: [],
       summary: 'All compliance checks passed',
@@ -160,6 +191,7 @@ All global project specifications in the root CLAUDE.md also apply to this modul
    * Get all CLAUDE.md files in the project
    */
   async getAllSpecs(): Promise<ClaudeMdSpec[]> {
+    const resolvedPath = this.getProjectPath();
     const specs: ClaudeMdSpec[] = [];
 
     // Simple implementation - recursively find all CLAUDE.md files
@@ -175,7 +207,7 @@ All global project specifications in the root CLAUDE.md also apply to this modul
           const content = await fs.readFile(fullPath, 'utf-8');
           specs.push({
             path: fullPath,
-            level: fullPath === path.join(this.projectPath, 'CLAUDE.md') ? 'root' : 'directory',
+            level: fullPath === path.join(resolvedPath, 'CLAUDE.md') ? 'root' : 'directory',
             content,
             rules: this.extractRules(content),
             lastUpdated: (await fs.stat(fullPath)).mtime,
@@ -184,7 +216,7 @@ All global project specifications in the root CLAUDE.md also apply to this modul
       }
     };
 
-    await findClaudeMd(this.projectPath);
+    await findClaudeMd(resolvedPath);
     return specs;
   }
 }

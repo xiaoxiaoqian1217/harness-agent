@@ -67,8 +67,9 @@ The system uses three specialized agents that work together:
 **LLM Abstraction** (`src/core/llm/`)
 - `LLMClient`: Interface defining standard LLM operations
 - `ClaudeClient`: Default implementation using @anthropic-ai/sdk
+- `QwenClient`: Implementation for Alibaba Qwen (OpenAI-compatible API)
 - `LLMClientFactory`: Factory for creating and configuring LLM clients
-- Supports multi-model architecture (Claude default, extensible to other providers)
+- Supports multi-model architecture (Claude default, extensible to OpenAI, Doubao, etc.)
 
 **Governance Layer** (`src/governance/`)
 - `ClaudeMdManager`: Manages CLAUDE.md specification files
@@ -167,7 +168,10 @@ src/
 
 - Node.js 20+
 - TypeScript 5.3+
-- Requires `ANTHROPIC_API_KEY` environment variable for Claude API access
+- Requires API key for LLM provider:
+  - `ANTHROPIC_API_KEY` for Claude (default)
+  - `QWEN_API_KEY` for Qwen/Aliyun
+  - `OPENAI_API_KEY` for OpenAI (when implemented)
 - Optional: `.env` file for configuration
 
 ## Common Development Tasks
@@ -190,8 +194,12 @@ src/
 
 ## Next Steps for Implementation
 
-- Complete Quality layer: `AestheticEvaluator`, `TestOrchestrator`
-- Implement CLI interface with Commander.js
-- Build main orchestration logic in `src/index.ts`
-- Add E2E demo validation scenario
-- Complete integration tests
+- ✅ Multi-model support: Claude (default), Qwen (implemented)
+- 🔄 OpenAI adapter implementation
+- 🔄 Doubao adapter implementation
+- 🔄 Tool call format conversion layer (OpenAI ↔ Claude)
+- 🔄 Complete SprintContractManager validation logic
+- 🔄 Smart context compression algorithm
+- 🔄 Comprehensive test suite
+- 🔄 Documentation website
+- 🔄 E2E demo validation

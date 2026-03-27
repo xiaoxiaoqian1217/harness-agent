@@ -1,11 +1,11 @@
 import { BaseAgent } from './BaseAgent';
 import { ProjectContext, SprintResult } from '../types/project';
-import { EvaluationFeedback, QualityScore } from '../types/quality';
+import { EvaluationFeedback, QualityScore, TestResult } from '../types/quality';
 import { defaultQualityRubric } from '../config';
-import { chromium, Browser, Page } from 'playwright';
+import { TestOrchestrator } from '../quality/TestOrchestrator';
 
 export class EvaluatorAgent extends BaseAgent {
-  private browser: Browser | undefined;
+  private testOrchestrator: TestOrchestrator | undefined;
 
   constructor() {
     super('evaluator');
@@ -14,13 +14,16 @@ export class EvaluatorAgent extends BaseAgent {
   /**
    * Initialize the evaluator agent
    */
-  async initialize(_projectPath?: string): Promise<void> {
+  async initialize(projectPath?: string): Promise<void> {
     await super.initialize();
 
-    // Initialize Playwright browser
-    this.browser = await chromium.launch({
-      headless: true,
-    });
+    // Initialize TestOrchestrator if project path is provided
+    if (projectPath) {
+      this.testOrchestrator = new TestOrchestrator({
+        screenshotDir: `${projectPath}/.harness/screenshots`,
+      });
+      await this.testOrchestrator.initialize();
+    }
 
     this.logger.info('Evaluator agent initialized');
   }
@@ -31,7 +34,17 @@ export class EvaluatorAgent extends BaseAgent {
   async evaluateProject(context: ProjectContext, _sprintResult?: SprintResult): Promise<EvaluationFeedback> {
     this.logger.info('Evaluating project quality');
 
-    // Run all evaluation dimensions
+    // Run tests if available
+    let testResults: TestResult[] = [];
+    if (this.testOrchestrator) {
+      try {
+        testResults = await this.testOrchestrator.runE2ETests(context);
+      } catch (error) {
+        this.logger.warn('E2E tests failed, continuing without test results', { error });
+      }
+    }
+
+    // Run all evaluation dimensions using LLM prompts (primary method)
     const [designScore, originalityScore, craftScore, usabilityScore] = await Promise.all([
       this.evaluateDesignQuality(context),
       this.evaluateOriginality(context),
@@ -80,7 +93,7 @@ export class EvaluatorAgent extends BaseAgent {
 
     return {
       qualityScore,
-      testResults: [], // We'll add actual test results later
+      testResults,
       generalFeedback: qualityScore.summary,
       improvementPoints,
       nextSteps,
@@ -262,17 +275,12 @@ ${scores.overallScore >= 85 ? '✅ Project meets quality standards, approved.' :
   /**
    * Take screenshot of the application for visual evaluation
    */
-  async takeScreenshot(url: string, outputPath: string): Promise<string> {
-    if (!this.browser) {
-      throw new Error('Evaluator not initialized');
+  async takeScreenshot(url: string): Promise<string[]> {
+    if (!this.testOrchestrator) {
+      throw new Error('TestOrchestrator not initialized. Initialize with projectPath first.');
     }
 
-    const page: Page = await this.browser.newPage();
-    await page.goto(url);
-    await page.screenshot({ path: outputPath, fullPage: true });
-    await page.close();
-
-    return outputPath;
+    return this.testOrchestrator.captureScreenshots(url);
   }
 
   /**
@@ -293,9 +301,9 @@ ${scores.overallScore >= 85 ? '✅ Project meets quality standards, approved.' :
   async cleanup(): Promise<void> {
     await super.cleanup();
 
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = undefined;
+    if (this.testOrchestrator) {
+      await this.testOrchestrator.cleanup();
+      this.testOrchestrator = undefined;
     }
   }
 }

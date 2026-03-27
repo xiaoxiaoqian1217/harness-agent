@@ -47,6 +47,9 @@ export const ProjectSpecificationSchema = z.object({
     typography: z.string(),
     designSystem: z.string(),
     responsive: z.boolean(),
+    accessibility: z.boolean().optional(),
+    animations: z.boolean().optional(),
+    brandGuidelines: z.string().optional(),
   }),
 });
 export type ProjectSpecification = z.infer<typeof ProjectSpecificationSchema>;
