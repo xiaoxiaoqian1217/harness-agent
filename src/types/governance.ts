@@ -1,12 +1,33 @@
 import { z } from 'zod';
 
+export const ClauseTypeSchema = z.enum([
+  'functional',
+  'quality',
+  'testing',
+  'code_quality',
+  'deliverable',
+  'process',
+]);
+export type ClauseType = z.infer<typeof ClauseTypeSchema>;
+
 export const SprintContractClauseSchema = z.object({
   id: z.string(),
+  type: ClauseTypeSchema.default('functional'),
   description: z.string(),
   verificationMethod: z.string(),
   required: z.boolean().default(true),
+  verificationCriteria: z.record(z.any()).optional(),
 });
 export type SprintContractClause = z.infer<typeof SprintContractClauseSchema>;
+
+export interface ContractSigning {
+  signedBy: {
+    generator?: { timestamp: Date; signatureData?: Record<string, any> };
+    evaluator?: { timestamp: Date; signatureData?: Record<string, any> };
+    planner?: { timestamp: Date; signatureData?: Record<string, any> };
+  };
+  signingTime?: Date;
+}
 
 export const SprintContractSchema = z.object({
   sprintId: z.string(),
@@ -22,12 +43,20 @@ export const SprintContractSchema = z.object({
   }),
   deliverables: z.array(z.string()),
   estimatedDurationHours: z.number(),
-  signedBy: z.object({
-    generator: z.string(),
-    evaluator: z.string(),
-    timestamp: z.date(),
+  signing: z.object({
+    signedBy: z.object({
+      generator: z.any().optional(),
+      evaluator: z.any().optional(),
+      planner: z.any().optional(),
+    }),
+    signingTime: z.date().optional(),
   }),
+  status: z.enum(['draft', 'signed', 'fulfilled', 'breached']).default('draft'),
+  version: z.number().default(1),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
+
 export type SprintContract = z.infer<typeof SprintContractSchema>;
 
 export const ContractFulfillmentResultSchema = z.object({
@@ -37,12 +66,21 @@ export const ContractFulfillmentResultSchema = z.object({
   failedClauses: z.array(z.object({
     clauseId: z.string(),
     reason: z.string(),
+    severity: z.enum(['critical', 'high', 'medium', 'low']),
   })),
   acceptanceCriteriaMet: z.boolean(),
   qualityThresholdsMet: z.boolean(),
   deliverablesCompleted: z.array(z.string()),
   deliverablesMissing: z.array(z.string()),
   summary: z.string(),
+  validatedAt: z.date(),
+  metrics: z.object({
+    totalClauses: z.number(),
+    passedCount: z.number(),
+    failedCount: z.number(),
+    qualityScore: z.number(),
+    deliverablesCompleteness: z.number(),
+  }),
 });
 export type ContractFulfillmentResult = z.infer<typeof ContractFulfillmentResultSchema>;
 

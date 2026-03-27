@@ -3,12 +3,15 @@ import { ProjectContext, SprintResult } from '../types/project';
 import { EvaluationFeedback, QualityScore, TestResult } from '../types/quality';
 import { defaultQualityRubric } from '../config';
 import { TestOrchestrator } from '../quality/TestOrchestrator';
+import { AestheticEvaluator } from '../quality/AestheticEvaluator';
 
 export class EvaluatorAgent extends BaseAgent {
   private testOrchestrator: TestOrchestrator | undefined;
+  private aestheticEvaluator: AestheticEvaluator;
 
   constructor() {
     super('evaluator');
+    this.aestheticEvaluator = new AestheticEvaluator();
   }
 
   /**
@@ -36,19 +39,40 @@ export class EvaluatorAgent extends BaseAgent {
 
     // Run tests if available
     let testResults: TestResult[] = [];
+    let screenshotPaths: string[] = [];
+
     if (this.testOrchestrator) {
       try {
         testResults = await this.testOrchestrator.runE2ETests(context);
+
+        // Capture screenshots for aesthetic evaluation
+        if (context.projectPath) {
+          try {
+            screenshotPaths = await this.testOrchestrator.captureScreenshots(
+              `file://${context.projectPath}/index.html`,
+              [
+                { name: 'mobile', width: 375, height: 667 },
+                { name: 'tablet', width: 768, height: 1024 },
+                { name: 'desktop', width: 1280, height: 720 },
+              ]
+            );
+            this.logger.info('Screenshots captured for aesthetic evaluation', { count: screenshotPaths.length });
+          } catch (error) {
+            this.logger.warn('Failed to capture screenshots, proceeding without visual analysis', { error });
+          }
+        }
       } catch (error) {
         this.logger.warn('E2E tests failed, continuing without test results', { error });
       }
     }
 
-    // Run all evaluation dimensions using LLM prompts (primary method)
+    // Run evaluation dimensions
+    // Design Quality and Craft Execution use visual analysis + LLM
+    // Originality and Functional Usability use LLM only
     const [designScore, originalityScore, craftScore, usabilityScore] = await Promise.all([
-      this.evaluateDesignQuality(context),
+      this.evaluateDesignQuality(context, screenshotPaths),
       this.evaluateOriginality(context),
-      this.evaluateCraftExecution(context),
+      this.evaluateCraftExecution(context, screenshotPaths),
       this.evaluateFunctionalUsability(context),
     ]);
 
@@ -102,11 +126,29 @@ export class EvaluatorAgent extends BaseAgent {
 
   /**
    * Evaluate design quality dimension
+   * Uses visual analysis from AestheticEvaluator when screenshots available, plus LLM assessment
    */
-  private async evaluateDesignQuality(context: ProjectContext): Promise<{ score: number; feedback: string; suggestions: string[] }> {
-    this.logger.info('Evaluating design quality');
+  private async evaluateDesignQuality(context: ProjectContext, screenshotPaths?: string[]): Promise<{ score: number; feedback: string; suggestions: string[] }> {
+    this.logger.info('Evaluating design quality', { hasScreenshots: !!screenshotPaths?.length });
 
-    const prompt = `
+    // First, use AestheticEvaluator with visual analysis if screenshots available
+    let visualScoreData: { score: number; feedback: string; suggestions: string[] } | null = null;
+    if (screenshotPaths && screenshotPaths.length > 0) {
+      try {
+        const visualDimensionScore = await this.aestheticEvaluator.evaluateDesignQuality(context, screenshotPaths);
+        visualScoreData = {
+          score: visualDimensionScore.score,
+          feedback: `[Visual Analysis] ${visualDimensionScore.feedback}`,
+          suggestions: visualDimensionScore.suggestions,
+        };
+        this.logger.info('Design quality evaluated with visual analysis', { score: visualDimensionScore.score });
+      } catch (error) {
+        this.logger.warn('Visual analysis failed, falling back to LLM-only assessment', { error });
+      }
+    }
+
+    // Always do LLM assessment for higher-level design understanding
+    const llmPrompt = `
 Evaluate the design quality of the following project:
 
 Project Title: ${context.specification.title}
@@ -117,6 +159,9 @@ Evaluate based on:
 2. Alignment with modern design principles and trends
 3. Brand alignment (if applicable)
 4. Overall aesthetic appeal (aim for museum-grade quality)
+5. Design system completeness and consistency
+
+${screenshotPaths && screenshotPaths.length > 0 ? 'Note: Visual screenshots have been analyzed by automated tools. Use this as reference.' : ''}
 
 Score from 0-100, and provide detailed feedback and improvement suggestions.
 Return ONLY a JSON object with:
@@ -127,8 +172,25 @@ Return ONLY a JSON object with:
 }
     `.trim();
 
-    const response = await this.generateResponse(prompt);
-    return JSON.parse(response.content);
+    const llmResponse = await this.generateResponse(llmPrompt);
+    const llmScoreData = JSON.parse(llmResponse.content);
+
+    // If we have visual analysis, blend the scores (weighted average)
+    if (visualScoreData) {
+      const blendedScore = Math.round(
+        visualScoreData.score * 0.4 + // Visual analysis weight
+        llmScoreData.score * 0.6     // LLM semantic understanding weight
+      );
+
+      return {
+        score: blendedScore,
+        feedback: `Visual Analysis: ${visualScoreData.feedback}\n\nLLM Assessment: ${llmScoreData.feedback}`,
+        suggestions: [...new Set([...visualScoreData.suggestions, ...llmScoreData.suggestions])],
+      };
+    }
+
+    // Fallback to LLM-only assessment
+    return llmScoreData;
   }
 
   /**
@@ -164,14 +226,43 @@ Return ONLY a JSON object with:
 
   /**
    * Evaluate craft execution dimension
+   * Uses visual analysis for spacing/typography/color + LLM for code quality
    */
-  private async evaluateCraftExecution(context: ProjectContext): Promise<{ score: number; feedback: string; suggestions: string[] }> {
-    this.logger.info('Evaluating craft execution quality');
+  private async evaluateCraftExecution(context: ProjectContext, screenshotPaths?: string[]): Promise<{ score: number; feedback: string; suggestions: string[] }> {
+    this.logger.info('Evaluating craft execution quality', { hasScreenshots: !!screenshotPaths?.length });
 
-    const prompt = `
+    // Visual analysis for technical craft (spacing, typography, color harmony)
+    let visualCraftScore: number | null = null;
+    let visualCraftFeedback: string[] = [];
+
+    if (screenshotPaths && screenshotPaths.length > 0) {
+      try {
+        // Note: We can extract craft-specific metrics from AestheticEvaluator's analysis
+        // For now, use the overall aesthetic score as a proxy for craft execution
+        const visualAnalysis = await this.aestheticEvaluator.evaluateDesignQuality(context, screenshotPaths);
+        visualCraftScore = Math.round(
+          (visualAnalysis.layout.spacingConsistency +
+           visualAnalysis.typography.sizeHierarchy +
+           visualAnalysis.typography.readability) / 3
+        );
+        visualCraftFeedback = [
+          `Layout spacing consistency: ${visualAnalysis.layout.spacingConsistency}%`,
+          `Typography hierarchy: ${visualAnalysis.typography.sizeHierarchy}%`,
+          `Typography readability: ${visualAnalysis.typography.readability}%`,
+          `Color contrast ratio: ${visualAnalysis.colorPalette.contrastRatio}:1`,
+        ];
+        this.logger.info('Craft execution evaluated with visual analysis', { score: visualCraftScore });
+      } catch (error) {
+        this.logger.warn('Visual craft analysis failed', { error });
+      }
+    }
+
+    // LLM assessment for code quality and best practices
+    const llmPrompt = `
 Evaluate the technical craft execution of the following project:
 
 Project Title: ${context.specification.title}
+Tech Stack: ${JSON.stringify(context.specification.techStack)}
 
 Evaluate based on:
 1. Spacing consistency (follows 4/8px grid system)
@@ -179,6 +270,9 @@ Evaluate based on:
 3. Color harmony and accessibility contrast
 4. Responsive design implementation
 5. Code quality and adherence to best practices
+6. Component structure and reusability
+
+${screenshotPaths && screenshotPaths.length > 0 ? 'Note: Automated visual analysis has provided metrics on layout and typography.' : ''}
 
 Score from 0-100, and provide detailed feedback and improvement suggestions.
 Return ONLY a JSON object with:
@@ -189,8 +283,24 @@ Return ONLY a JSON object with:
 }
     `.trim();
 
-    const response = await this.generateResponse(prompt);
-    return JSON.parse(response.content);
+    const llmResponse = await this.generateResponse(llmPrompt);
+    const llmScoreData = JSON.parse(llmResponse.content);
+
+    // Blend scores if visual data available
+    if (visualCraftScore !== null) {
+      const blendedScore = Math.round(
+        visualCraftScore * 0.5 + // Visual craft metrics
+        llmScoreData.score * 0.5 // LLM code quality assessment
+      );
+
+      return {
+        score: blendedScore,
+        feedback: `Visual Metrics:\n${visualCraftFeedback.join('\n')}\n\nCode Quality Assessment:\n${llmScoreData.feedback}`,
+        suggestions: [...new Set([...visualCraftFeedback, ...llmScoreData.suggestions])],
+      };
+    }
+
+    return llmScoreData;
   }
 
   /**

@@ -19,7 +19,7 @@ export class ClaudeClient extends BaseLLMClient {
     this.initialized = true;
   }
 
-  async generateResponse(
+  async generateResponseInternal(
     prompt: string,
     systemPrompt?: string,
     _context?: Record<string, any>
@@ -54,7 +54,7 @@ export class ClaudeClient extends BaseLLMClient {
     };
   }
 
-  async generateResponseWithTools(
+  async generateResponseWithToolsInternal(
     prompt: string,
     tools: any[],
     systemPrompt?: string,

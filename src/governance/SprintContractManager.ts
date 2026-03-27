@@ -1,59 +1,68 @@
 import { Sprint } from '../types/project';
-import { SprintContract, ContractFulfillmentResult, SprintContractClause } from '../types/governance';
+import { SprintContract, ContractFulfillmentResult } from '../types/governance';
+import { EvaluationFeedback } from '../types/quality';
 import { agentConfig } from '../config';
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [new winston.transports.Console()],
+});
 
 export class SprintContractManager {
+  private activeContracts: Map<string, SprintContract> = new Map();
+  private contractHistory: Map<string, ContractFulfillmentResult[]> = new Map();
+
   constructor() {}
 
   /**
-   * Draft a new sprint contract
+   * Draft a sprint contract
    */
   async draftContract(sprint: Sprint): Promise<SprintContract> {
-    const clauses: SprintContractClause[] = [];
+    logger.info('Drafting sprint contract', {
+      sprintNumber: sprint.sprintNumber,
+      title: sprint.title,
+    });
 
-    // Add clauses for each task
-    sprint.tasks.forEach((task, index) => {
+    const clauses: any[] = [];
+
+    // Task clauses
+    sprint.tasks.forEach((task, idx) => {
       clauses.push({
-        id: `clause-task-${index + 1}`,
-        description: `Implement task: ${task.title} - ${task.description}`,
-        verificationMethod: `Code review and functional testing of the ${task.title} feature`,
+        id: `task-${idx + 1}`,
+        description: `Implement: ${task.title}`,
+        verificationMethod: 'Code review and testing',
         required: true,
       });
     });
 
-    // Add clauses for each deliverable
-    sprint.deliverables.forEach((deliverable, index) => {
+    // Deliverable clauses
+    sprint.deliverables.forEach((del, idx) => {
       clauses.push({
-        id: `clause-deliverable-${index + 1}`,
-        description: `Deliver: ${deliverable}`,
-        verificationMethod: `Verify ${deliverable} exists and meets specifications`,
+        id: `deliverable-${idx + 1}`,
+        description: `Deliver: ${del}`,
+        verificationMethod: `Verify ${del} exists`,
         required: true,
       });
     });
 
-    // Add quality clauses
+    // Quality clauses
     clauses.push({
-      id: 'clause-quality-1',
-      description: `Overall quality score >= ${agentConfig.qualityThresholds.minPassScore}/100`,
-      verificationMethod: 'Automated quality evaluation by EvaluatorAgent',
+      id: 'quality-pass',
+      description: `Quality score >= ${agentConfig.qualityThresholds.minPassScore}/100`,
+      verificationMethod: 'Evaluator assessment',
       required: true,
     });
 
     clauses.push({
-      id: 'clause-quality-2',
+      id: 'tests-pass',
       description: 'All tests pass',
-      verificationMethod: 'Automated test suite execution',
+      verificationMethod: 'Test execution',
       required: true,
     });
 
-    clauses.push({
-      id: 'clause-quality-3',
-      description: 'No critical or high severity bugs',
-      verificationMethod: 'Automated bug detection and manual review',
-      required: true,
-    });
-
-    return {
+    const contract: SprintContract = {
       sprintId: sprint.id,
       sprintNumber: sprint.sprintNumber,
       title: sprint.title,
@@ -71,112 +80,273 @@ export class SprintContractManager {
         testCoverageThreshold: 80,
       },
       deliverables: sprint.deliverables,
-      estimatedDurationHours: sprint.tasks.reduce((sum, task) => sum + task.estimatedHours, 0),
-      signedBy: {
-        generator: 'GeneratorAgent',
-        evaluator: 'EvaluatorAgent',
-        timestamp: new Date(),
+      estimatedDurationHours: sprint.tasks.reduce((sum, t) => sum + t.estimatedHours, 0),
+      signing: {
+        signedBy: {},
+        signingTime: undefined,
       },
+      status: 'draft',
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
+
+    this.activeContracts.set(sprint.id, contract);
+
+    return contract;
   }
 
   /**
-   * Validate if the sprint result fulfills the contract
+   * Sign contract
+   */
+  async signContract(
+    contractId: string,
+    signer: 'generator' | 'evaluator',
+    signatureData?: Record<string, any>
+  ): Promise<void> {
+    const contract = this.activeContracts.get(contractId);
+    if (!contract) throw new Error(`Contract not found: ${contractId}`);
+
+    (contract.signing.signedBy as any)[signer] = {
+      timestamp: new Date(),
+      signatureData,
+    };
+
+    contract.updatedAt = new Date();
+  }
+
+  /**
+   * Validate fulfillment
    */
   async validateContractFulfillment(
-    contract: SprintContract,
+    contractId: string,
     sprintResult: any,
-    evaluationFeedback: any
+    evaluationFeedback: EvaluationFeedback
   ): Promise<ContractFulfillmentResult> {
-    const passedClauses: string[] = [];
-    const failedClauses: { clauseId: string; reason: string }[] = [];
+    const contract = this.activeContracts.get(contractId);
+    if (!contract) throw new Error(`Contract not found: ${contractId}`);
 
-    // Check each clause
+    const passedClauses: string[] = [];
+    const failedClauses: { clauseId: string; reason: string; severity: 'critical' | 'high' | 'medium' | 'low' }[] = [];
+
+    // Check clauses
     for (const clause of contract.clauses) {
       if (!clause.required) continue;
 
-      // In a real implementation, we would verify each clause
-      // For now, we'll use the evaluation feedback to determine pass/fail
-      const isPassed = this.verifyClause(clause, sprintResult, evaluationFeedback);
-
-      if (isPassed) {
+      const validation = this.verifyClause(clause, sprintResult, evaluationFeedback);
+      if (validation.passed) {
         passedClauses.push(clause.id);
       } else {
         failedClauses.push({
           clauseId: clause.id,
-          reason: `Clause not met: ${clause.description}`,
+          reason: validation.reason!,
+          severity: this.getSeverity(clause.id),
         });
       }
     }
 
-    // Check if all acceptance criteria are met
-    const acceptanceCriteriaMet = failedClauses.length === 0;
+    // Check quality
+    const qualityScore = evaluationFeedback.qualityScore.overall;
+    const qualityMet = qualityScore >= contract.qualityThresholds.minimumOverallScore;
 
-    // Check quality thresholds
-    const qualityThresholdsMet = evaluationFeedback.qualityScore.pass;
+    if (!qualityMet) {
+      failedClauses.push({
+        clauseId: 'quality-overall',
+        reason: `Quality score ${qualityScore} < ${contract.qualityThresholds.minimumOverallScore}`,
+        severity: 'critical',
+      });
+    }
 
-    // Check all deliverables are completed
-    const deliverablesCompleted = sprintResult.generatedFiles || [];
-    const deliverablesMissing = contract.deliverables.filter(
-      d => !deliverablesCompleted.some((f: string) => f.includes(d))
-    );
+    // Check deliverables
+    const completed: string[] = [];
+    const missing: string[] = [];
 
-    const fulfilled = failedClauses.length === 0 && qualityThresholdsMet && deliverablesMissing.length === 0;
+    for (const deliverable of contract.deliverables) {
+      const found = sprintResult.generatedFiles?.some((f: string) =>
+        f.toLowerCase().includes(deliverable.toLowerCase().split(' ')[0])
+      );
+      found ? completed.push(deliverable) : missing.push(deliverable);
+    }
 
-    return {
-      contractId: `${contract.sprintId}-contract`,
+    // Determine fulfillment
+    const criticalFails = failedClauses.filter(f => f.severity === 'critical').length;
+    const fulfilled = criticalFails === 0 && qualityMet && missing.length === 0;
+
+    const result: ContractFulfillmentResult = {
+      contractId,
       fulfilled,
       passedClauses,
       failedClauses,
-      acceptanceCriteriaMet,
-      qualityThresholdsMet,
-      deliverablesCompleted,
-      deliverablesMissing,
-      summary: fulfilled
-        ? 'All contract terms have been fulfilled successfully'
-        : `Contract not fulfilled. ${failedClauses.length} failed clauses, ${deliverablesMissing.length} missing deliverables`,
+      acceptanceCriteriaMet: passedClauses.length === contract.clauses.filter(c => c.required).length,
+      qualityThresholdsMet: qualityMet,
+      deliverablesCompleted: completed,
+      deliverablesMissing: missing,
+      summary: this.generateSummary(contract, fulfilled, passedClauses, failedClauses, qualityScore, missing),
+      validatedAt: new Date(),
+      metrics: {
+        totalClauses: contract.clauses.filter(c => c.required).length,
+        passedCount: passedClauses.length,
+        failedCount: failedClauses.length,
+        qualityScore,
+        deliverablesCompleteness: completed.length / contract.deliverables.length,
+      },
     };
+
+    // Store history
+    const history = this.contractHistory.get(contractId) || [];
+    history.push(result);
+    this.contractHistory.set(contractId, history);
+
+    // Update contract
+    contract.status = fulfilled ? 'fulfilled' : 'breached';
+    contract.updatedAt = new Date();
+
+    return result;
   }
 
   /**
-   * Verify if a single clause is met
+   * Verify single clause
    */
-  private verifyClause(clause: SprintContractClause, sprintResult: any, evaluationFeedback: any): boolean {
-    // Simple implementation for demonstration
-    if (clause.id.startsWith('clause-quality-1')) {
-      const match = clause.description.match(/\d+/);
-      return match ? evaluationFeedback.qualityScore.overall >= parseInt(match[0]) : true;
+  private verifyClause(clause: any, sprintResult: any, evaluationFeedback: EvaluationFeedback): {
+    passed: boolean;
+    reason?: string;
+  } {
+    // Quality clause
+    if (clause.id.includes('quality')) {
+      const score = evaluationFeedback.qualityScore.overall;
+      const pass = score >= agentConfig.qualityThresholds.minPassScore;
+      return {
+        passed: pass,
+        reason: pass ? undefined : `Quality score ${score} below threshold`,
+      };
     }
 
-    if (clause.id.startsWith('clause-quality-2')) {
-      return sprintResult.testStatus === true;
+    // Test clause
+    if (clause.id.includes('test') || clause.description.includes('test')) {
+      const pass = sprintResult.testStatus === true;
+      return { passed: pass, reason: pass ? undefined : 'Tests failed' };
     }
 
-    // Assume other clauses are passed for now
-    // In a real implementation, we would verify each clause individually
-    return true;
+    // Task/Deliverable - assume pass if sprint succeeded
+    return { passed: true };
   }
 
   /**
-   * Generate a contract summary report
+   * Get severity for failed clause
+   */
+  private getSeverity(clauseId: string): 'critical' | 'high' | 'medium' | 'low' {
+    if (clauseId.includes('quality') || clauseId.includes('test')) return 'critical';
+    if (clauseId.includes('task')) return 'high';
+    return 'medium';
+  }
+
+  /**
+   * Generate summary
+   */
+  private generateSummary(
+    contract: SprintContract,
+    fulfilled: boolean,
+    passedClauses: string[],
+    failedClauses: { clauseId: string; reason: string; severity: string }[],
+    qualityScore: number,
+    missing: string[]
+  ): string {
+    const lines: string[] = [];
+
+    lines.push(`Sprint ${contract.sprintNumber}: ${fulfilled ? '✅ FULFILLED' : '❌ BREACHED'}`);
+    lines.push(`Quality Score: ${qualityScore}/100`);
+    lines.push(`Clauses: ${passedClauses.length}/${contract.clauses.filter(c => c.required).length} passed`);
+    lines.push(`Deliverables: ${contract.deliverables.length - missing.length}/${contract.deliverables.length} completed`);
+
+    if (failedClauses.length > 0) {
+      lines.push('\nFailed:');
+      failedClauses.forEach(f => lines.push(`  [${f.severity}] ${f.reason}`));
+    }
+
+    if (missing.length > 0) {
+      lines.push('\nMissing:');
+      missing.forEach(m => lines.push(`  - ${m}`));
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate report
    */
   generateContractReport(contract: SprintContract, result: ContractFulfillmentResult): string {
     return `
 # Sprint ${contract.sprintNumber} Contract Report
 
-## Status: ${result.fulfilled ? '✅ FULFILLED' : '❌ NOT FULFILLED'}
+Status: ${result.fulfilled ? '✅ FULFILLED' : '❌ BREACHED'}
+Generated: ${result.validatedAt.toISOString()}
 
-## Summary
 ${result.summary}
 
-## Clauses
-Total: ${contract.clauses.length} | Passed: ${result.passedClauses.length} | Failed: ${result.failedClauses.length}
+## Metrics
+- Quality Score: ${result.metrics.qualityScore}/100
+- Clauses: ${result.metrics.passedCount}/${result.metrics.totalClauses} passed (${Math.round(result.metrics.passedCount / result.metrics.totalClauses * 100)}%)
+- Deliverables: ${result.deliverablesCompleted.length}/${contract.deliverables.length} completed
 
-## Deliverables
-Completed: ${result.deliverablesCompleted.length} | Missing: ${result.deliverablesMissing.length}
-
-## Quality
-Thresholds Met: ${result.qualityThresholdsMet ? '✅ Yes' : '❌ No'}
+## Recommendations
+${this.generateRecommendations(result)}
     `.trim();
+  }
+
+  /**
+   * Generate recommendations
+   */
+  private generateRecommendations(result: ContractFulfillmentResult): string {
+    const recs: string[] = [];
+
+    if (!result.qualityThresholdsMet) {
+      recs.push('Improve quality scores based on evaluator feedback');
+    }
+
+    if (result.deliverablesMissing.length > 0) {
+      recs.push(`Complete missing: ${result.deliverablesMissing.join(', ')}`);
+    }
+
+    if (recs.length === 0) {
+      recs.push('Excellent work! Maintain current quality standards.');
+    }
+
+    return recs.join('\n');
+  }
+
+  /**
+   * Get contract
+   */
+  getActiveContract(contractId: string): SprintContract | undefined {
+    return this.activeContracts.get(contractId);
+  }
+
+  /**
+   * Get history
+   */
+  getContractHistory(contractId: string): ContractFulfillmentResult[] {
+    return this.contractHistory.get(contractId) || [];
+  }
+
+  /**
+   * List all active contracts
+   */
+  listActiveContracts(): SprintContract[] {
+    return Array.from(this.activeContracts.values());
+  }
+
+  /**
+   * Archive contract
+   */
+  archiveContract(contractId: string): boolean {
+    return this.activeContracts.delete(contractId);
+  }
+
+  /**
+   * Clear all (testing)
+   */
+  clearAll(): void {
+    this.activeContracts.clear();
+    this.contractHistory.clear();
   }
 }

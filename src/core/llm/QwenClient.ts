@@ -51,7 +51,7 @@ export class QwenClient extends BaseLLMClient {
     this.initialized = true;
   }
 
-  async generateResponse(
+  async generateResponseInternal(
     prompt: string,
     systemPrompt?: string,
     _context?: Record<string, any>
@@ -121,7 +121,7 @@ export class QwenClient extends BaseLLMClient {
     }
   }
 
-  async generateResponseWithTools(
+  async generateResponseWithToolsInternal(
     prompt: string,
     tools: any[],
     systemPrompt?: string,
