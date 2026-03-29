@@ -1,13 +1,13 @@
 # Personal Portfolio & Blog Platform - Global Project Specifications
 
 ## Project Overview
-A high-performance, accessible personal website featuring a project gallery, downloadable CV, secure contact form, and a fully managed blog system. Designed to showcase professional expertise while maintaining clean aesthetics and optimal SEO.
+A full-stack web application designed to showcase professional work and publish technical content. Built with Next.js and SQLite, it offers a seamless experience for visitors to explore projects, read articles, and contact the owner, featuring a responsive design and dark mode support.
 
 ## Technology Stack
 {
   "frontend": "react-nextjs",
   "backend": null,
-  "database": "postgresql",
+  "database": "sqlite",
   "fullStack": "react-nextjs",
   "isSeparate": false
 }
@@ -16,20 +16,20 @@ A high-performance, accessible personal website featuring a project gallery, dow
 {
   "isSeparateFrontendBackend": false,
   "components": [
-    "Next.js Application Core",
-    "PostgreSQL Database",
-    "Prisma ORM",
-    "API Routes & Server Actions",
-    "Client-Side State Management"
+    "Next.js App Router",
+    "SQLite Database Layer",
+    "API Route Handlers",
+    "Static Page Generator",
+    "CMS Content Layer"
   ],
-  "dataFlow": "User requests trigger Next.js Server Components to fetch data from PostgreSQL via Prisma ORM. Content is rendered server-side for SEO. Client-side hydration enables interactive features like theme toggling and search filtering. Admin operations route through secure API endpoints to update the database."
+  "dataFlow": "User requests initiate at the Next.js server. Server-side rendering fetches data from SQLite via ORM. Dynamic content (blog posts, projects) is generated on-demand or pre-rendered. API routes handle form submissions and dynamic queries. Responses are sent back to the client for hydration."
 }
 
 ## Design Guidelines
 {
-  "colorScheme": "Neutral Grayscale (Slate/Zinc) with Primary Accent (Indigo)",
-  "typography": "Sans-serif (Inter) for UI, Serif (Merriweather) for Blog Content",
-  "designSystem": "Tailwind CSS with Radix UI primitives",
+  "colorScheme": "Neutral monochrome base (Slate/Zinc) with a single primary accent color (e.g., Indigo)",
+  "typography": "Clean sans-serif typeface (Inter or System UI) with clear hierarchy",
+  "designSystem": "Tailwind CSS for utility-first styling",
   "responsive": true
 }
 

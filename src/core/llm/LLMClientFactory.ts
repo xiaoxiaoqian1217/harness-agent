@@ -70,34 +70,48 @@ export class LLMClientFactory {
    * @param agentType Type of agent to create client for
    */
   static async createDefaultClientForAgent(agentType: AgentType): Promise<LLMClient> {
-    const defaultConfigs: Record<AgentType, { provider: LLMProvider; config: AgentConfig }> = {
+    // Get provider for each agent from environment, with sensible defaults
+    const getProvider = (agent: AgentType): LLMProvider => {
+      const providerMap: Record<AgentType, LLMProvider> = {
+        planner: (process.env.PLANNER_PROVIDER as LLMProvider) || 'qwen',
+        generator: (process.env.GENERATOR_PROVIDER as LLMProvider) || 'claude',
+        evaluator: (process.env.EVALUATOR_PROVIDER as LLMProvider) || 'claude',
+      };
+      return providerMap[agent];
+    };
+
+    // Get model based on provider
+    const getModel = (provider: LLMProvider): string => {
+      const defaultModels: Record<LLMProvider, string> = {
+        claude: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
+        qwen: process.env.QWEN_MODEL || 'qwen3.5-flash',
+        openai: process.env.OPENAI_MODEL || 'gpt-4-turbo',
+        doubao: process.env.DOUBAO_MODEL || 'doubao-1.5-pro',
+      };
+      return defaultModels[provider];
+    };
+
+    const provider = getProvider(agentType);
+
+    const configs: Record<AgentType, AgentConfig> = {
       planner: {
-        provider: 'qwen',
-        config: {
-          model: process.env.QWEN_MODEL || 'claude-3-opus-20240229',
-          temperature: parseFloat(process.env.PLANNER_TEMPERATURE || '0.1'),
-          maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
-        }
+        model: getModel(provider),
+        temperature: parseFloat(process.env.PLANNER_TEMPERATURE || '0.1'),
+        maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
       },
       generator: {
-        provider: 'qwen',
-        config: {
-          model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
-          temperature: parseFloat(process.env.GENERATOR_TEMPERATURE || '0.7'),
-          maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
-        }
+        model: getModel(provider),
+        temperature: parseFloat(process.env.GENERATOR_TEMPERATURE || '0.7'),
+        maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
       },
       evaluator: {
-        provider: 'qwen',
-        config: {
-          model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
-          temperature: parseFloat(process.env.EVALUATOR_TEMPERATURE || '0.3'),
-          maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
-        }
+        model: getModel(provider),
+        temperature: parseFloat(process.env.EVALUATOR_TEMPERATURE || '0.3'),
+        maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
       }
     };
 
-    const { provider, config } = defaultConfigs[agentType];
+    const config = configs[agentType];
     return this.createClient(provider, config);
   }
 

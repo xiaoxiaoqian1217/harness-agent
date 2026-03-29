@@ -40,6 +40,7 @@ export class GeneratorAgent extends BaseAgent {
       throw new Error('Generator not initialized for project');
     }
 
+    console.log('   ⚡ Generating project structure via LLM...');
     this.logger.info('Initializing project structure', {
       techStack: context.specification.techStack,
     });
@@ -64,6 +65,11 @@ Only include files that are necessary for the initial project setup.
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to initialize project structure: ${response.error || 'Unknown error'}`);
+    }
+
     const fileStructure = JSON.parse(response.content);
 
     // Write all files to disk
@@ -127,8 +133,15 @@ Provide the output as a JSON object where keys are file paths (relative to proje
 Only include files that were modified or added during this sprint.
       `.trim();
 
+      console.log(`   ⚡ Executing sprint ${sprint.sprintNumber}: Generating code...`);
       const response = await this.generateResponse(prompt);
+
+      if (!response.success) {
+        throw new Error(`Failed to execute sprint: ${response.error || 'Unknown error'}`);
+      }
+
       const changedFiles = JSON.parse(response.content);
+      console.log(`   ✅ Sprint ${sprint.sprintNumber} code generated, writing ${Object.keys(changedFiles).length} files`);
 
       // Write all changed files to disk
       for (const [filePath, content] of Object.entries(changedFiles)) {
@@ -200,6 +213,11 @@ Only include files that were modified.
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to update project files: ${response.error || 'Unknown error'}`);
+    }
+
     const changedFiles = JSON.parse(response.content);
 
     // Write all changed files to disk

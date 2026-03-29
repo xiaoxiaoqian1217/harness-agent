@@ -221,6 +221,11 @@ Return ONLY a JSON object with:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to evaluate design quality: ${response.error || 'Unknown error'}`);
+    }
+
     return JSON.parse(response.content);
   }
 
@@ -327,6 +332,11 @@ Return ONLY a JSON object with:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to evaluate functional usability: ${response.error || 'Unknown error'}`);
+    }
+
     return JSON.parse(response.content);
   }
 

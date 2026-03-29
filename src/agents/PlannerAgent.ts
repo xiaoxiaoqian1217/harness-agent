@@ -243,9 +243,16 @@ Return ONLY a valid JSON object with the following structure:
     try {
       const rawRequirements = typeof input === 'string' ? input : input.requirement;
 
+      console.log('   [1/4] Analyzing requirements...');
       const requirements = await this.analyzeRequirements(rawRequirements);
+
+      console.log('   [2/4] Recommending technology stack...');
       const techStack = await this.recommendTechStack(requirements);
+
+      console.log('   [3/4] Creating project specification...');
       const specification = await this.createProjectSpecification(requirements, techStack);
+
+      console.log('   [4/4] Creating project plan...');
       const plan = await this.createProjectPlan(specification);
 
       // Create full project context

@@ -14,9 +14,13 @@ export class ClaudeClient extends BaseLLMClient {
       throw new Error('ANTHROPIC_API_KEY environment variable is not set');
     }
 
+    console.error('[ClaudeClient] Initializing with model:', config.model);
+    console.error('[ClaudeClient] API key length:', apiKey.length);
+
     this.client = new Anthropic({ apiKey });
     this.config = config;
     this.initialized = true;
+    console.error('[ClaudeClient] Initialization complete');
   }
 
   async generateResponseInternal(

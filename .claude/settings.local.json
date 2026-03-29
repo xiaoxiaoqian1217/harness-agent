@@ -26,7 +26,22 @@
       "Bash(npm --version)",
       "Bash(npm list:*)",
       "Bash(node:*)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer sk-5de5b8b9fc1c47f8ac9ef01bd09c0ab1\" -d '{\"\"\"\"model\"\"\"\":\"\"\"\"qwen3.5-flash\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"test\"\"\"\"}]}')"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer sk-5de5b8b9fc1c47f8ac9ef01bd09c0ab1\" -d '{\"\"\"\"model\"\"\"\":\"\"\"\"qwen3.5-flash\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"test\"\"\"\"}]}')",
+      "Bash(cat /tmp/claude/D--xxq-work-harness-agent/*/tasks/bi8cew7rn.output)",
+      "Bash(tee /tmp/init-output.log)",
+      "Read",
+      "Write", 
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(npm run test:*)",
+      "Bash(ls:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(docker:*)"
     ]
   }
 }
