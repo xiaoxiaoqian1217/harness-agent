@@ -8,7 +8,16 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(claude code:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git worktree:*)",
+      "Bash(npm test:*)",
+      "Bash(claude:*)",
+      "Bash(where claude:*)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(git checkout:*)",
+      "Bash(findstr -i jest)",
+      "Bash(python -c \"import sys, json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data.get\\(''''jest'''', {}\\), indent=2\\)\\)\")"
     ]
   }
 }

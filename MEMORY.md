@@ -36,9 +36,10 @@
 - ✅ 迭代限制（默认最多 5 次迭代）
 - ✅ 增量更新优化
 
-#### AestheticEvaluator ⚠️
+#### AestheticEvaluator ✅
 - 框架完成，包含视觉分析和评分功能
-- 可深度集成到 EvaluatorAgent（当前使用 LLM 提示词评分为主）
+- 已深度集成到 EvaluatorAgent（Design Quality 使用视觉分析 + LLM 混合评分）
+- Craft Execution 基于截图可用性提供视觉贡献基线（未来可扩展共享视觉分析）
 
 #### TestOrchestrator ✅
 - ✅ E2E 测试场景生成

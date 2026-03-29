@@ -36,20 +36,28 @@ export class AestheticEvaluator {
 
   /**
    * Evaluate design quality dimension with visual analysis
+   * @param context - Project context containing specification and other metadata
+   * @param screenshotPaths - Optional array of screenshot paths for analysis (used if precomputedAnalysis not provided)
+   * @param precomputedAnalysis - Optional precomputed aesthetic analysis to use directly (skips screenshot analysis)
+   * @returns Promise<DimensionScore> - Design quality dimension score, feedback, and suggestions
    */
   async evaluateDesignQuality(
     context: ProjectContext,
-    screenshotPaths?: string[]
+    screenshotPaths?: string[],
+    precomputedAnalysis?: AestheticAnalysis
   ): Promise<DimensionScore> {
     logger.info('Evaluating design quality with aesthetic analysis', {
       projectTitle: context.specification.title,
+      hasPrecomputedAnalysis: !!precomputedAnalysis,
       hasScreenshots: !!screenshotPaths?.length,
     });
 
     let visualAnalysis: AestheticAnalysis | null = null;
 
-    // Analyze screenshots if available
-    if (screenshotPaths && screenshotPaths.length > 0) {
+    // Use precomputed analysis if provided, otherwise analyze screenshots if available
+    if (precomputedAnalysis) {
+      visualAnalysis = precomputedAnalysis;
+    } else if (screenshotPaths && screenshotPaths.length > 0) {
       try {
         visualAnalysis = await this.analyzeScreenshots(screenshotPaths);
       } catch (error) {
@@ -75,8 +83,10 @@ export class AestheticEvaluator {
 
   /**
    * Analyze screenshots using sharp for visual metrics
+   * @param screenshotPaths - Array of paths to screenshot image files
+   * @returns Promise<AestheticAnalysis> - Comprehensive aesthetic analysis including color palette, layout metrics, typography metrics, and overall aesthetic score
    */
-  private async analyzeScreenshots(screenshotPaths: string[]): Promise<AestheticAnalysis> {
+  async analyzeScreenshots(screenshotPaths: string[]): Promise<AestheticAnalysis> {
     logger.info('Analyzing screenshots for aesthetic evaluation', { count: screenshotPaths.length });
 
     const analyses = await Promise.all(
@@ -233,8 +243,14 @@ export class AestheticEvaluator {
 
   /**
    * Evaluate originality dimension
+   * @param context - Project context containing specification and other metadata
+   * @param _precomputedAnalysis - Optional precomputed aesthetic analysis (reserved for future use, currently unused)
+   * @returns Promise<DimensionScore> - Originality dimension score, feedback, and suggestions
    */
-  async evaluateOriginality(context: ProjectContext): Promise<DimensionScore> {
+  async evaluateOriginality(
+    context: ProjectContext,
+    _precomputedAnalysis?: AestheticAnalysis
+  ): Promise<DimensionScore> {
     logger.info('Evaluating design originality', {
       projectTitle: context.specification.title,
     });
@@ -285,37 +301,131 @@ export class AestheticEvaluator {
 
   /**
    * Evaluate craft execution dimension
+   * @param context - Project context containing specification and other metadata
+   * @param screenshotPaths - Optional array of screenshot paths for visual analysis (used if precomputedAnalysis not provided)
+   * @param precomputedAnalysis - Optional precomputed aesthetic analysis to use directly (skips screenshot analysis)
+   * @returns Promise<DimensionScore> - Craft execution dimension score, feedback, and suggestions
    */
-  async evaluateCraftExecution(context: ProjectContext): Promise<DimensionScore> {
+  async evaluateCraftExecution(
+    context: ProjectContext,
+    screenshotPaths?: string[],
+    precomputedAnalysis?: AestheticAnalysis
+  ): Promise<DimensionScore> {
     logger.info('Evaluating craft execution quality', {
       projectTitle: context.specification.title,
+      hasPrecomputedAnalysis: !!precomputedAnalysis,
+      hasScreenshots: !!screenshotPaths?.length,
     });
 
-    let score = 75; // Base score
-    const suggestions: string[] = [];
+    let visualAnalysis: AestheticAnalysis | null = null;
+    let visualCraftScore: number | null = null;
+    const visualCraftFeedback: string[] = [];
 
+    // Get visual analysis if available
+    if (precomputedAnalysis) {
+      visualAnalysis = precomputedAnalysis;
+    } else if (screenshotPaths && screenshotPaths.length > 0) {
+      try {
+        visualAnalysis = await this.analyzeScreenshots(screenshotPaths);
+      } catch (error) {
+        logger.warn('Failed to analyze screenshots for craft execution', { error });
+      }
+    }
+
+    // Calculate visual craft score from analysis if available
+    if (visualAnalysis) {
+      const layoutScores = [
+        visualAnalysis.layout.gridAlignment,
+        visualAnalysis.layout.spacingConsistency,
+        visualAnalysis.layout.visualHierarchy,
+      ];
+      const typographyScores = [
+        visualAnalysis.typography.fontPairing,
+        visualAnalysis.typography.sizeHierarchy,
+        visualAnalysis.typography.readability,
+      ];
+      visualCraftScore = Math.round(
+        [...layoutScores, ...typographyScores].reduce((a, b) => a + b, 0) / (layoutScores.length + typographyScores.length)
+      );
+
+      // Generate visual-specific feedback
+      visualCraftFeedback.push('Visual craft analysis from screenshots:');
+      visualCraftFeedback.push(`  - Layout: grid=${visualAnalysis.layout.gridAlignment}%, spacing=${visualAnalysis.layout.spacingConsistency}%, hierarchy=${visualAnalysis.layout.visualHierarchy}%`);
+      visualCraftFeedback.push(`  - Typography: fontPairing=${visualAnalysis.typography.fontPairing}%, sizeHierarchy=${visualAnalysis.typography.sizeHierarchy}%, readability=${visualAnalysis.typography.readability}%`);
+    }
+
+    // Calculate base score using guidelines (heuristic assessment)
+    let score = 75; // Base score
     const guidelines = context.specification.designGuidelines;
+    const suggestions: string[] = [];
 
     if (guidelines.designSystem) score += 5;
     if (guidelines.responsive) score += 5;
 
+    // If we have visual craft score, blend it with guideline-based score (weighted average)
+    if (visualCraftScore !== null) {
+      // Give visual analysis 60% weight, guidelines 40% (since guidelines already incorporated in base)
+      const guidelineScore = score;
+      score = Math.round(visualCraftScore * 0.6 + guidelineScore * 0.4);
+    }
+
     // Cap at 95
     score = Math.min(score, 95);
 
-    const feedback = score >= 85
-      ? 'Excellent craft execution! Attention to detail in spacing, typography, and responsive design.'
-      : score >= 70
-        ? 'Good craft execution with solid foundations, but some inconsistencies in implementation details.'
-        : 'Craft execution needs improvement with attention to spacing, typography hierarchy, and responsive behavior.';
+    // Generate feedback - combine visual feedback if available with general feedback
+    const rating = score >= 85 ? 'Excellent' : score >= 70 ? 'Good' : 'Needs Improvement';
+    let feedback = `${rating} craft execution (${score}/100). `;
 
+    if (visualAnalysis) {
+      feedback += `Visual analysis: layout alignment ${visualAnalysis.layout.gridAlignment}%, `;
+      feedback += `typography hierarchy ${visualAnalysis.typography.sizeHierarchy}%, `;
+      feedback += `readability ${visualAnalysis.typography.readability}. `;
+    } else {
+      feedback += 'Based on specification analysis. ';
+    }
+
+    if (score >= 85) {
+      feedback += 'Excellent craft execution with attention to detail in spacing, typography, and responsive design.';
+    } else if (score >= 70) {
+      feedback += 'Good craft execution with solid foundations, but some inconsistencies in implementation details.';
+    } else {
+      feedback += 'Craft execution needs improvement with attention to spacing, typography hierarchy, and responsive behavior.';
+    }
+
+    // Generate suggestions - combine visual-specific with guideline-based
+    if (visualAnalysis) {
+      if (visualAnalysis.layout.spacingConsistency < 80) {
+        suggestions.push('Improve spacing consistency by adhering to a standardized 8px grid system');
+      }
+      if (visualAnalysis.typography.readability < 80) {
+        suggestions.push('Enhance text readability with better contrast ratios and line heights');
+      }
+      if (visualAnalysis.layout.visualHierarchy < 85) {
+        suggestions.push('Strengthen visual hierarchy using size, weight, and color variations');
+      }
+      if (visualAnalysis.typography.sizeHierarchy < 85) {
+        suggestions.push('Define and document a clear typographic scale for all text elements');
+      }
+    }
+
+    // Original guideline-based suggestions
     if (score < 90) {
-      suggestions.push('Ensure consistent spacing following the 8px grid system throughout');
-      suggestions.push('Establish and enforce a clear typographic hierarchy (H1-H6, body, caption)');
+      suggestions.push('Ensure consistent spacing throughout the implementation');
+      suggestions.push('Establish clear typographic hierarchy for all text elements');
     }
 
     if (score < 80) {
       suggestions.push('Implement comprehensive responsive breakpoints for all viewport sizes');
       suggestions.push('Add automated visual regression testing to catch inconsistencies');
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push('Maintain current craft standards and continue refining details');
+    }
+
+    // Combine visual feedback into the main feedback string
+    if (visualCraftFeedback.length > 0) {
+      feedback += '\n' + visualCraftFeedback.join('\n');
     }
 
     return {
