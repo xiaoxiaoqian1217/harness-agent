@@ -41,6 +41,11 @@ Return ONLY a valid JSON object with the following structure:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to analyze requirements: ${response.error || 'Unknown error'}`);
+    }
+
     const parsedRequirements = StructuredRequirementsSchema.parse(JSON.parse(response.content));
 
     return {
@@ -85,6 +90,11 @@ Return ONLY a valid JSON object with the following structure:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to recommend tech stack: ${response.error || 'Unknown error'}`);
+    }
+
     const parsedStack = JSON.parse(response.content);
 
     // Validate the stack against available definitions
@@ -136,6 +146,11 @@ Return ONLY a valid JSON object with the following structure:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to create project specification: ${response.error || 'Unknown error'}`);
+    }
+
     const parsedSpec = JSON.parse(response.content);
 
     return parsedSpec as ProjectSpecification;
@@ -176,6 +191,11 @@ Return ONLY a valid JSON object with the following structure:
     `.trim();
 
     const response = await this.generateResponse(prompt);
+
+    if (!response.success) {
+      throw new Error(`Failed to create project plan: ${response.error || 'Unknown error'}`);
+    }
+
     const parsedPlan = JSON.parse(response.content);
 
     // Convert to proper Sprint objects with IDs

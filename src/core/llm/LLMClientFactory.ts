@@ -72,15 +72,15 @@ export class LLMClientFactory {
   static async createDefaultClientForAgent(agentType: AgentType): Promise<LLMClient> {
     const defaultConfigs: Record<AgentType, { provider: LLMProvider; config: AgentConfig }> = {
       planner: {
-        provider: 'claude',
+        provider: 'qwen',
         config: {
-          model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
+          model: process.env.QWEN_MODEL || 'claude-3-opus-20240229',
           temperature: parseFloat(process.env.PLANNER_TEMPERATURE || '0.1'),
           maxTokens: parseInt(process.env.MAX_TOKENS_PER_REQUEST || '4096'),
         }
       },
       generator: {
-        provider: 'claude',
+        provider: 'qwen',
         config: {
           model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
           temperature: parseFloat(process.env.GENERATOR_TEMPERATURE || '0.7'),
@@ -88,7 +88,7 @@ export class LLMClientFactory {
         }
       },
       evaluator: {
-        provider: 'claude',
+        provider: 'qwen',
         config: {
           model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
           temperature: parseFloat(process.env.EVALUATOR_TEMPERATURE || '0.3'),

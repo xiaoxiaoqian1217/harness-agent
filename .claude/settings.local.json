@@ -17,7 +17,16 @@
       "Bash(python3 -m json.tool)",
       "Bash(git checkout:*)",
       "Bash(findstr -i jest)",
-      "Bash(python -c \"import sys, json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data.get\\(''''jest'''', {}\\), indent=2\\)\\)\")"
+      "Bash(python -c \"import sys, json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data.get\\(''''jest'''', {}\\), indent=2\\)\\)\")",
+      "Bash(git branch:*)",
+      "Bash(xargs -I {} bash -c 'basename {}')",
+      "Bash(npx playwright:*)",
+      "Bash(PLANNER_TEMPERATURE=0.1 GENERATOR_TEMPERATURE=0.7 EVALUATOR_TEMPERATURE=0.3 MIN_PASS_SCORE=85 PIVOT_THRESHOLD=60 MAX_ITERATIONS=5 DEFAULT_WORKSPACE=./workspace PLAYWRIGHT_HEADLESS=true PLAYWRIGHT_VIEWPORT_WIDTH=1920 PLAYWRIGHT_VIEWPORT_HEIGHT=1080 npx jest tests/AestheticEvaluator.test.ts --no-coverage)",
+      "Bash(PLANNER_TEMPERATURE=0.1 GENERATOR_TEMPERATURE=0.7 EVALUATOR_TEMPERATURE=0.3 MIN_PASS_SCORE=85 PIVOT_THRESHOLD=60 MAX_ITERATIONS=5 PLAYWRIGHT_HEADLESS=true npx jest tests/core-features.test.ts --no-coverage 2>&1)",
+      "Bash(npm --version)",
+      "Bash(npm list:*)",
+      "Bash(node:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer sk-5de5b8b9fc1c47f8ac9ef01bd09c0ab1\" -d '{\"\"\"\"model\"\"\"\":\"\"\"\"qwen3.5-flash\"\"\"\",\"\"\"\"messages\"\"\"\":[{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"test\"\"\"\"}]}')"
     ]
   }
 }

@@ -88,4 +88,49 @@ Be strict and thorough in your evaluation. Prioritize:
 
 export type AgentGlobalConfig = z.infer<typeof AgentGlobalConfigSchema>;
 
-export const agentConfig = AgentGlobalConfigSchema.parse({});
+// Load configuration from environment variables with defaults
+export const agentConfig = AgentGlobalConfigSchema.parse({
+  defaultModel: process.env.CLAUDE_MODEL,
+  maxTokensPerRequest: process.env.MAX_TOKENS_PER_REQUEST ? parseInt(process.env.MAX_TOKENS_PER_REQUEST) : undefined,
+  defaultProvider: process.env.DEFAULT_PROVIDER as any,
+
+  // Planner config
+  planner: {
+    temperature: process.env.PLANNER_TEMPERATURE ? parseFloat(process.env.PLANNER_TEMPERATURE) : undefined,
+    systemPrompt: undefined, // Use default from schema
+  },
+
+  // Generator config
+  generator: {
+    temperature: process.env.GENERATOR_TEMPERATURE ? parseFloat(process.env.GENERATOR_TEMPERATURE) : undefined,
+    systemPrompt: undefined, // Use default from schema
+  },
+
+  // Evaluator config
+  evaluator: {
+    temperature: process.env.EVALUATOR_TEMPERATURE ? parseFloat(process.env.EVALUATOR_TEMPERATURE) : undefined,
+    systemPrompt: undefined, // Use default from schema
+  },
+
+  // Quality thresholds
+  qualityThresholds: {
+    minPassScore: process.env.MIN_PASS_SCORE ? parseInt(process.env.MIN_PASS_SCORE) : undefined,
+    pivotThreshold: process.env.PIVOT_THRESHOLD ? parseInt(process.env.PIVOT_THRESHOLD) : undefined,
+    maxIterations: process.env.MAX_ITERATIONS ? parseInt(process.env.MAX_ITERATIONS) : undefined,
+  },
+
+  // Project config
+  project: {
+    defaultWorkspace: process.env.DEFAULT_WORKSPACE,
+    gitAutoCommit: process.env.GIT_AUTO_COMMIT === 'true',
+    createSnapshots: process.env.CREATE_SNAPSHOTS === 'true',
+  },
+
+  // Playwright config
+  playwright: {
+    headless: process.env.PLAYWRIGHT_HEADLESS === 'true',
+    viewportWidth: process.env.PLAYWRIGHT_VIEWPORT_WIDTH ? parseInt(process.env.PLAYWRIGHT_VIEWPORT_WIDTH) : undefined,
+    viewportHeight: process.env.PLAYWRIGHT_VIEWPORT_HEIGHT ? parseInt(process.env.PLAYWRIGHT_VIEWPORT_HEIGHT) : undefined,
+    defaultBrowser: process.env.PLAYWRIGHT_DEFAULT_BROWSER as any,
+  },
+});
