@@ -1,14 +1,14 @@
 # Personal Portfolio & Blog Platform - Global Project Specifications
 
 ## Project Overview
-A full-stack web application designed to showcase professional work and publish technical content. Built with Next.js and SQLite, it offers a seamless experience for visitors to explore projects, read articles, and contact the owner, featuring a responsive design and dark mode support.
+A full-stack personal website built with Next.js and SQLite, featuring a responsive design, content management system, and SEO-optimized blog functionality.
 
 ## Technology Stack
 {
   "frontend": "react-nextjs",
   "backend": null,
   "database": "sqlite",
-  "fullStack": "react-nextjs",
+  "fullStack": null,
   "isSeparate": false
 }
 
@@ -17,19 +17,20 @@ A full-stack web application designed to showcase professional work and publish 
   "isSeparateFrontendBackend": false,
   "components": [
     "Next.js App Router",
-    "SQLite Database Layer",
-    "API Route Handlers",
-    "Static Page Generator",
-    "CMS Content Layer"
+    "SQLite Database",
+    "Prisma ORM",
+    "Admin Dashboard Route",
+    "Public Landing Pages",
+    "Blog Engine"
   ],
-  "dataFlow": "User requests initiate at the Next.js server. Server-side rendering fetches data from SQLite via ORM. Dynamic content (blog posts, projects) is generated on-demand or pre-rendered. API routes handle form submissions and dynamic queries. Responses are sent back to the client for hydration."
+  "dataFlow": "Client requests are handled by Next.js server-side rendering or API routes. Data is persisted in SQLite via Prisma ORM. Admin updates trigger database writes, while public views utilize static generation or incremental static regeneration for performance."
 }
 
 ## Design Guidelines
 {
-  "colorScheme": "Neutral monochrome base (Slate/Zinc) with a single primary accent color (e.g., Indigo)",
-  "typography": "Clean sans-serif typeface (Inter or System UI) with clear hierarchy",
-  "designSystem": "Tailwind CSS for utility-first styling",
+  "colorScheme": "Monochromatic palette with high contrast black (#000000) and white (#FFFFFF) base, accented by slate gray (#64748B)",
+  "typography": "Sans-serif (Inter) for interface, Serif (Merriweather) for article body text",
+  "designSystem": "Tailwind CSS",
   "responsive": true
 }
 
