@@ -30,14 +30,15 @@
       "Bash(cat /tmp/claude/D--xxq-work-harness-agent/*/tasks/bi8cew7rn.output)",
       "Bash(tee /tmp/init-output.log)",
       "Read",
-      "Write", 
+      "Write",
       "Edit",
       "Glob",
       "Grep",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(npm run test:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep -v \"^$\")"
     ],
     "ask": [
       "Bash(git commit:*)",

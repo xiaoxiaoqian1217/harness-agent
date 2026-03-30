@@ -80,6 +80,12 @@ export class LLMClientFactory {
       return providerMap[agent];
     };
 
+    // Debug logging
+    console.error(`[LLMClientFactory] Creating client for ${agentType}`);
+    console.error(`[LLMClientFactory] PLANNER_PROVIDER=${process.env.PLANNER_PROVIDER}`);
+    console.error(`[LLMClientFactory] GENERATOR_PROVIDER=${process.env.GENERATOR_PROVIDER}`);
+    console.error(`[LLMClientFactory] EVALUATOR_PROVIDER=${process.env.EVALUATOR_PROVIDER}`);
+
     // Get model based on provider
     const getModel = (provider: LLMProvider): string => {
       const defaultModels: Record<LLMProvider, string> = {

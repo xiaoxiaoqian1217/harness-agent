@@ -3,6 +3,7 @@ import { ProjectContext, Sprint, SprintResult } from '../types/project';
 import { GitManager } from '../core/GitManager';
 import fs from 'fs-extra';
 import path from 'path';
+import { parseJsonFromResponse } from '../utils/jsonParser';
 
 export class GeneratorAgent extends BaseAgent {
   private gitManager: GitManager | undefined;
@@ -46,7 +47,14 @@ export class GeneratorAgent extends BaseAgent {
     });
 
     const prompt = `
-Initialize the project structure for the following project:
+You are an expert full-stack developer. Your task is to generate the initial project structure.
+
+ABSOLUTELY IMPORTANT:
+- Respond with ONLY a valid JSON object
+- NO explanations, NO bash commands, NO markdown code blocks
+- NO text before or after the JSON
+- START your response with "{"
+- END your response with "}"
 
 Project Title: ${context.specification.title}
 Project Description: ${context.specification.description}
@@ -54,14 +62,28 @@ Technology Stack: ${JSON.stringify(context.specification.techStack)}
 Architecture: ${JSON.stringify(context.specification.architecture)}
 
 Generate the complete project structure including:
-1. All necessary configuration files (package.json, tsconfig.json, etc.)
-2. Directory structure for source code
-3. Initial boilerplate code
-4. README.md with project information
-5. .gitignore file
+1. Configuration files (package.json, tsconfig.json, vite.config.ts, etc.)
+2. Directory structure: src/, src/components/, src/hooks/, src/utils/, etc.
+3. Initial boilerplate code for main entry points
+4. README.md with setup instructions
+5. .gitignore with appropriate entries
+6. Environment configuration (.env.example)
 
-Provide the output as a JSON object where keys are file paths and values are file contents.
-Only include files that are necessary for the initial project setup.
+The JSON response MUST be an object where:
+- Keys are file paths relative to project root (e.g., "src/index.ts")
+- Values are the complete file contents as strings
+
+Example response format (this is just an example, generate actual files for the project):
+{
+  "package.json": "{\\"name\\": \\"my-project\\", \\"version\\": \\"1.0.0\\", ...}",
+  "tsconfig.json": "{\\"compilerOptions\\": {...}, ...}",
+  "vite.config.ts": "import { defineConfig } from 'vite'\\nexport default defineConfig({...})",
+  "src/main.tsx": "import React from 'react'\\nimport ReactDOM from 'react-dom/client'\\n...",
+  "README.md": "# Project Title\\n\\nSetup instructions...",
+  ".gitignore": "node_modules\\ndist\\n.env"
+}
+
+Now generate the actual project structure. Respond with JSON only.
     `.trim();
 
     const response = await this.generateResponse(prompt);
@@ -70,7 +92,7 @@ Only include files that are necessary for the initial project setup.
       throw new Error(`Failed to initialize project structure: ${response.error || 'Unknown error'}`);
     }
 
-    const fileStructure = JSON.parse(response.content);
+    const fileStructure = parseJsonFromResponse<Record<string, string>>(response.content);
 
     // Write all files to disk
     for (const [filePath, content] of Object.entries(fileStructure)) {
@@ -140,7 +162,7 @@ Only include files that were modified or added during this sprint.
         throw new Error(`Failed to execute sprint: ${response.error || 'Unknown error'}`);
       }
 
-      const changedFiles = JSON.parse(response.content);
+      const changedFiles = parseJsonFromResponse<Record<string, string>>(response.content);
       console.log(`   ✅ Sprint ${sprint.sprintNumber} code generated, writing ${Object.keys(changedFiles).length} files`);
 
       // Write all changed files to disk
@@ -218,7 +240,7 @@ Only include files that were modified.
       throw new Error(`Failed to update project files: ${response.error || 'Unknown error'}`);
     }
 
-    const changedFiles = JSON.parse(response.content);
+    const changedFiles = parseJsonFromResponse<Record<string, string>>(response.content);
 
     // Write all changed files to disk
     for (const [filePath, content] of Object.entries(changedFiles)) {

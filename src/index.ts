@@ -44,7 +44,7 @@ program
   .option('--frontend <frontend>', 'Specify frontend technology')
   .option('--backend <backend>', 'Specify backend technology')
   .option('--database <database>', 'Specify database technology')
-  .option('-o, --output <path>', 'Output directory path', './my-project')
+  .option('-o, --output <path>', 'Output directory path', './output')
   .action(async (requirement: string, options: any) => {
     console.log(chalk.blue.bold('\n🚀 Harness AI Agent - Project Initialization\n'));
 
@@ -154,7 +154,7 @@ program
       // Step 3: Set up adversarial loop and execute sprints
       console.log(chalk.blue('\n⚡ Step 3: Starting development sprints...'));
 
-      await evaluatorAgent.initialize(outputPath);
+      await evaluatorAgent.initialize(outputPath, { startServer: true });
 
       const adversarialLoop = new AdversarialLoop(generatorAgent, evaluatorAgent);
 
@@ -260,7 +260,7 @@ program
       const evaluatorAgent = new EvaluatorAgent();
 
       await generatorAgent.initializeForProject(resolvedPath);
-      await evaluatorAgent.initialize(resolvedPath);
+      await evaluatorAgent.initialize(resolvedPath, { startServer: true });
 
       // Run adversarial loop
       console.log(chalk.blue('\n⚡ Continuing development...'));
@@ -327,7 +327,7 @@ program
       // Initialize evaluator
       console.log(chalk.gray('\n📋 Initializing evaluator...'));
       const evaluatorAgent = new EvaluatorAgent();
-      await evaluatorAgent.initialize(resolvedPath);
+      await evaluatorAgent.initialize(resolvedPath, { startServer: true });
 
       // Run evaluation
       console.log(chalk.blue('\n📊 Running quality evaluation...'));

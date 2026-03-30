@@ -1,6 +1,7 @@
 import { BaseAgent } from './BaseAgent';
 import { ProjectRequirements, ProjectSpecification, ProjectPlan, TechStack, Sprint } from '../types/project';
 import { z } from 'zod';
+import { parseJsonFromResponse } from '../utils/jsonParser';
 
 const StructuredRequirementsSchema = z.object({
   title: z.string(),
@@ -46,7 +47,7 @@ Return ONLY a valid JSON object with the following structure:
       throw new Error(`Failed to analyze requirements: ${response.error || 'Unknown error'}`);
     }
 
-    const parsedRequirements = StructuredRequirementsSchema.parse(JSON.parse(response.content));
+    const parsedRequirements = StructuredRequirementsSchema.parse(parseJsonFromResponse(response.content));
 
     return {
       rawDescription: rawRequirements,
@@ -95,16 +96,39 @@ Return ONLY a valid JSON object with the following structure:
       throw new Error(`Failed to recommend tech stack: ${response.error || 'Unknown error'}`);
     }
 
-    const parsedStack = JSON.parse(response.content);
+    const parsedStack = parseJsonFromResponse<{
+      frontend: string | null;
+      backend: string | null;
+      database: string | null;
+      fullStack: string | null;
+      isSeparate: boolean;
+      reasoning: string;
+    }>(response.content);
 
-    // Validate the stack against available definitions
-    return {
-      frontend: parsedStack.frontend,
-      backend: parsedStack.backend,
-      database: parsedStack.database,
-      fullStack: parsedStack.fullStack,
+    // Define allowed tech stack values (matching TechStackTypeSchema and database enum)
+    const allowedFrontend = ['react-vite', 'react-nextjs', 'vue-vite', 'vue-nuxt', 'vanilla-js'] as const;
+    const allowedBackend = ['node-express', 'node-nestjs', 'python-fastapi', 'golang-gin'] as const;
+    const allowedDatabase = ['sqlite', 'postgresql', 'mysql', 'mongodb'] as const;
+    const allowedFullStack = ['react-fastapi', 'react-express', 'vue-fastapi', 'fullstack-next'] as const;
+
+    // Validate and cast to proper types (null -> undefined, invalid -> undefined)
+    const techStack: TechStack = {
+      frontend: (parsedStack.frontend && allowedFrontend.includes(parsedStack.frontend as any))
+        ? (parsedStack.frontend as TechStack['frontend'])
+        : undefined,
+      backend: (parsedStack.backend && allowedBackend.includes(parsedStack.backend as any))
+        ? (parsedStack.backend as TechStack['backend'])
+        : undefined,
+      database: (parsedStack.database && allowedDatabase.includes(parsedStack.database as any))
+        ? (parsedStack.database as TechStack['database'])
+        : undefined,
+      fullStack: (parsedStack.fullStack && allowedFullStack.includes(parsedStack.fullStack as any))
+        ? (parsedStack.fullStack as TechStack['fullStack'])
+        : undefined,
       isSeparate: parsedStack.isSeparate,
     };
+
+    return techStack;
   }
 
   /**
@@ -151,9 +175,9 @@ Return ONLY a valid JSON object with the following structure:
       throw new Error(`Failed to create project specification: ${response.error || 'Unknown error'}`);
     }
 
-    const parsedSpec = JSON.parse(response.content);
+    const parsedSpec = parseJsonFromResponse<ProjectSpecification>(response.content);
 
-    return parsedSpec as ProjectSpecification;
+    return parsedSpec;
   }
 
   /**
@@ -196,7 +220,7 @@ Return ONLY a valid JSON object with the following structure:
       throw new Error(`Failed to create project plan: ${response.error || 'Unknown error'}`);
     }
 
-    const parsedPlan = JSON.parse(response.content);
+    const parsedPlan = parseJsonFromResponse<ProjectPlan>(response.content);
 
     // Convert to proper Sprint objects with IDs
     const sprints: (Sprint & { estimatedHours?: number })[] = parsedPlan.sprints.map((sprint: any, index: number) => ({

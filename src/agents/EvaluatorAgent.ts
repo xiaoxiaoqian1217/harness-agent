@@ -4,20 +4,25 @@ import { EvaluationFeedback, QualityScore, TestResult } from '../types/quality';
 import { defaultQualityRubric } from '../config';
 import { TestOrchestrator } from '../quality/TestOrchestrator';
 import { AestheticEvaluator } from '../quality/AestheticEvaluator';
+import { parseJsonFromResponse } from '../utils/jsonParser';
+import { DevServerManager } from '../utils/DevServerManager';
 
 export class EvaluatorAgent extends BaseAgent {
   private testOrchestrator: TestOrchestrator | undefined;
   private aestheticEvaluator: AestheticEvaluator;
+  private devServerManager: DevServerManager | undefined;
+  private shouldStartServer: boolean;
 
   constructor() {
     super('evaluator');
     this.aestheticEvaluator = new AestheticEvaluator();
+    this.shouldStartServer = false; // Default: don't auto-start server
   }
 
   /**
    * Initialize the evaluator agent
    */
-  async initialize(projectPath?: string): Promise<void> {
+  async initialize(projectPath?: string, options?: { startServer?: boolean }): Promise<void> {
     await super.initialize();
 
     // Initialize TestOrchestrator if project path is provided
@@ -28,7 +33,16 @@ export class EvaluatorAgent extends BaseAgent {
       await this.testOrchestrator.initialize();
     }
 
-    this.logger.info('Evaluator agent initialized');
+    // Initialize dev server manager if requested
+    if (options?.startServer && projectPath) {
+      this.devServerManager = new DevServerManager({
+        projectPath,
+        port: 3000,
+      });
+      this.shouldStartServer = true;
+    }
+
+    this.logger.info('Evaluator agent initialized', { startServer: this.shouldStartServer });
   }
 
   /**
@@ -37,19 +51,41 @@ export class EvaluatorAgent extends BaseAgent {
   async evaluateProject(context: ProjectContext, _sprintResult?: SprintResult): Promise<EvaluationFeedback> {
     this.logger.info('Evaluating project quality');
 
+    // Start dev server if configured
+    if (this.shouldStartServer && this.devServerManager) {
+      try {
+        this.logger.info('Starting development server for evaluation...');
+        await this.devServerManager.start();
+        this.logger.info('Development server started', { url: this.devServerManager.getServerUrl() });
+      } catch (error) {
+        this.logger.warn('Failed to start development server, proceeding without live preview', { error });
+        this.shouldStartServer = false;
+      }
+    }
+
     // Run tests if available
     let testResults: TestResult[] = [];
     let screenshotPaths: string[] = [];
 
     if (this.testOrchestrator) {
       try {
-        testResults = await this.testOrchestrator.runE2ETests(context);
+        // Determine which URL to use for testing and screenshots
+        const appUrl = this.devServerManager?.isServerReady()
+          ? this.devServerManager.getServerUrl()
+          : undefined; // Will default to TestOrchestrator's baseUrl (http://localhost:3000)
+
+        testResults = await this.testOrchestrator.runE2ETests(context, undefined, appUrl);
 
         // Capture screenshots for aesthetic evaluation
-        if (context.projectPath) {
+        // For Next.js and modern frameworks, use the live server URL, not file://
+        const screenshotUrl = this.devServerManager?.isServerReady()
+          ? this.devServerManager.getServerUrl()
+          : appUrl || this.testOrchestrator?.getBaseUrl(); // Fallback to configured baseUrl
+
+        if (screenshotUrl) {
           try {
             screenshotPaths = await this.testOrchestrator.captureScreenshots(
-              `file://${context.projectPath}/index.html`,
+              screenshotUrl,
               [
                 { name: 'mobile', width: 375, height: 667 },
                 { name: 'tablet', width: 768, height: 1024 },
@@ -173,7 +209,7 @@ Return ONLY a JSON object with:
     `.trim();
 
     const llmResponse = await this.generateResponse(llmPrompt);
-    const llmScoreData = JSON.parse(llmResponse.content);
+    const llmScoreData = parseJsonFromResponse<{score: number; feedback: string; suggestions: string[]}>(llmResponse.content);
 
     // If we have visual analysis, blend the scores (weighted average)
     if (visualScoreData) {
@@ -226,7 +262,7 @@ Return ONLY a JSON object with:
       throw new Error(`Failed to evaluate design quality: ${response.error || 'Unknown error'}`);
     }
 
-    return JSON.parse(response.content);
+    return parseJsonFromResponse<{score: number; feedback: string; suggestions: string[]}>(response.content);
   }
 
   /**
@@ -282,7 +318,7 @@ Return ONLY a JSON object with:
     `.trim();
 
     const llmResponse = await this.generateResponse(llmPrompt);
-    const llmScoreData = JSON.parse(llmResponse.content);
+    const llmScoreData = parseJsonFromResponse<{score: number; feedback: string; suggestions: string[]}>(llmResponse.content);
 
     // Blend scores if visual data available
     if (visualCraftScore !== null) {
@@ -337,7 +373,7 @@ Return ONLY a JSON object with:
       throw new Error(`Failed to evaluate functional usability: ${response.error || 'Unknown error'}`);
     }
 
-    return JSON.parse(response.content);
+    return parseJsonFromResponse<{score: number; feedback: string; suggestions: string[]}>(response.content);
   }
 
   /**
@@ -417,6 +453,11 @@ ${scores.overallScore >= 85 ? '✅ Project meets quality standards, approved.' :
     if (this.testOrchestrator) {
       await this.testOrchestrator.cleanup();
       this.testOrchestrator = undefined;
+    }
+
+    if (this.devServerManager) {
+      await this.devServerManager.stop();
+      this.devServerManager = undefined;
     }
   }
 }

@@ -21,7 +21,7 @@ export interface TestOrchestratorOptions {
 export interface E2ETestScenario {
   name: string;
   description: string;
-  steps: (page: Page, context: BrowserContext) => Promise<void>;
+  steps: (page: Page, context: BrowserContext, baseUrl: string) => Promise<void>;
   viewport?: { width: number; height: number };
 }
 
@@ -112,8 +112,8 @@ export class TestOrchestrator {
       name: 'Page Load Smoke Test',
       description: 'Verify the application loads successfully',
       viewport: { width: 1280, height: 720 },
-      steps: async (page: Page) => {
-        await page.goto('/', { waitUntil: 'networkidle' });
+      steps: async (page: Page, _context: BrowserContext, baseUrl: string) => {
+        await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
         // Check that something rendered
         await page.waitForSelector('body', { state: 'attached' });
       },
@@ -125,8 +125,8 @@ export class TestOrchestrator {
         name: 'Authentication Flow Test',
         description: 'Verify user can login and logout',
         viewport: { width: 1280, height: 720 },
-        steps: async (page: Page) => {
-          await page.goto('/');
+        steps: async (page: Page, _context: BrowserContext, baseUrl: string) => {
+          await page.goto(`${baseUrl}/`);
           // Look for login-related elements
           const hasLoginButton = await page.$('text=/login|sign in/i') !== null;
           if (hasLoginButton) {
@@ -142,8 +142,8 @@ export class TestOrchestrator {
         name: 'Todo List Test',
         description: 'Verify todo list functionality',
         viewport: { width: 1280, height: 720 },
-        steps: async (page: Page) => {
-          await page.goto('/');
+        steps: async (page: Page, _context: BrowserContext, baseUrl: string) => {
+          await page.goto(`${baseUrl}/`);
           // Look for todo list elements
           await page.waitForSelector('body', { state: 'attached' });
         },
@@ -162,8 +162,8 @@ export class TestOrchestrator {
         name: `Responsive Test - ${viewport.name}`,
         description: `Verify application renders correctly on ${viewport.name}`,
         viewport,
-        steps: async (page: Page) => {
-          await page.goto('/', { waitUntil: 'networkidle' });
+        steps: async (page: Page, _context: BrowserContext, baseUrl: string) => {
+          await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
           await page.waitForTimeout(500);
         },
       });
@@ -177,7 +177,7 @@ export class TestOrchestrator {
    */
   private async runTestScenario(
     scenario: E2ETestScenario,
-    _baseUrl: string
+    baseUrl: string
   ): Promise<TestResult> {
     if (!this.context) {
       throw new Error('TestOrchestrator not initialized');
@@ -187,7 +187,7 @@ export class TestOrchestrator {
     const screenshotName = `${scenario.name.replace(/\s+/g, '-').toLowerCase()}.png`;
     const screenshotPath = path.join(this.screenshotDir, screenshotName);
 
-    logger.info('Running test scenario', { scenario: scenario.name });
+    logger.info('Running test scenario', { scenario: scenario.name, baseUrl });
 
     try {
       const page = await this.context.newPage();
@@ -198,8 +198,8 @@ export class TestOrchestrator {
 
       page.setDefaultTimeout(this.options.defaultTimeout);
 
-      // Run the test steps
-      await scenario.steps(page, this.context);
+      // Run the test steps with baseUrl
+      await scenario.steps(page, this.context, baseUrl);
 
       // Take screenshot
       await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -422,5 +422,12 @@ export class TestOrchestrator {
       await this.browser.close();
       this.browser = null;
     }
+  }
+
+  /**
+   * Get the configured base URL
+   */
+  getBaseUrl(): string {
+    return this.options.baseUrl;
   }
 }

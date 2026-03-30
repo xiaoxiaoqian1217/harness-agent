@@ -1,36 +1,34 @@
-# Personal Portfolio & Blog Platform - Global Project Specifications
+# Elite Task Manager - Global Project Specifications
 
 ## Project Overview
-A full-stack personal website built with Next.js and SQLite, featuring a responsive design, content management system, and SEO-optimized blog functionality.
+A premium-grade todo application designed with award-winning aesthetics and robust engineering. It features seamless authentication, persistent storage, and fluid interactions across devices, ensuring a delightful user experience on both desktop and mobile platforms.
 
 ## Technology Stack
 {
   "frontend": "react-nextjs",
-  "backend": null,
-  "database": "sqlite",
-  "fullStack": null,
-  "isSeparate": false
+  "backend": "node-nestjs",
+  "database": "postgresql",
+  "isSeparate": true
 }
 
 ## Architecture
 {
-  "isSeparateFrontendBackend": false,
+  "isSeparateFrontendBackend": true,
   "components": [
-    "Next.js App Router",
-    "SQLite Database",
-    "Prisma ORM",
-    "Admin Dashboard Route",
-    "Public Landing Pages",
-    "Blog Engine"
+    "Next.js Frontend Application",
+    "NestJS API Gateway",
+    "PostgreSQL Database Cluster",
+    "JWT Authentication Service",
+    "Drag-and-Drop State Manager"
   ],
-  "dataFlow": "Client requests are handled by Next.js server-side rendering or API routes. Data is persisted in SQLite via Prisma ORM. Admin updates trigger database writes, while public views utilize static generation or incremental static regeneration for performance."
+  "dataFlow": "User interacts with Next.js frontend which renders pages via SSR/CSR. Actions trigger authenticated HTTP requests to NestJS backend. NestJS validates JWT tokens, executes business logic, and performs CRUD operations on PostgreSQL. Results are serialized to JSON and returned to the client for optimistic UI updates."
 }
 
 ## Design Guidelines
 {
-  "colorScheme": "Monochromatic palette with high contrast black (#000000) and white (#FFFFFF) base, accented by slate gray (#64748B)",
-  "typography": "Sans-serif (Inter) for interface, Serif (Merriweather) for article body text",
-  "designSystem": "Tailwind CSS",
+  "colorScheme": "Dynamic palette supporting Light (#FFFFFF background) and Dark (#121212 background) modes with high-contrast accent colors for primary actions",
+  "typography": "Inter font family for optimal screen readability and modern aesthetic",
+  "designSystem": "Tailwind CSS for utility-first styling combined with Framer Motion for complex micro-interactions",
   "responsive": true
 }
 
